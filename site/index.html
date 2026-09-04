@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>HINK 2.13 三色价签</title>
+  <style>
+    :root { color-scheme: light; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: #f3f0e8; color: #1c1b18; }
+    main { width: min(920px, calc(100% - 32px)); margin: 32px auto; }
+    h1 { margin: 0 0 6px; font-size: clamp(26px, 4vw, 42px); letter-spacing: -.03em; }
+    .lead { margin: 0 0 24px; color: #666158; }
+    .grid { display: grid; grid-template-columns: minmax(180px, 300px) 1fr; gap: 24px; }
+    .panel { background: #fffdf7; border: 1px solid #d8d1c4; border-radius: 18px; padding: 20px; box-shadow: 0 14px 35px #342b1d12; }
+    .screen { display: grid; place-items: center; min-height: 500px; background: #222; border-radius: 14px; padding: 18px; }
+    canvas { width: 244px; height: 500px; image-rendering: pixelated; background: #fff; box-shadow: 0 0 0 2px #aaa; }
+    label, button, select, input { font: inherit; }
+    label { display: block; font-weight: 650; margin: 0 0 8px; }
+    input[type=file], select { width: 100%; box-sizing: border-box; margin-bottom: 18px; padding: 10px; border: 1px solid #c9c1b3; border-radius: 10px; background: #fff; }
+    button { width: 100%; border: 0; border-radius: 11px; padding: 12px 14px; margin: 0 0 10px; font-weight: 700; cursor: pointer; background: #171713; color: #fff; }
+    button.secondary { background: #e8e1d4; color: #28241d; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    progress { width: 100%; height: 12px; margin-top: 12px; }
+    #status { min-height: 44px; margin: 14px 0 0; color: #565047; white-space: pre-wrap; }
+    .swatches { display: flex; gap: 12px; font-size: 13px; margin: 4px 0 18px; color: #625c53; }
+    .swatches i { display: inline-block; width: 12px; height: 12px; border: 1px solid #777; margin-right: 4px; vertical-align: -2px; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } .screen { min-height: auto; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>HINK 2.13 三色价签</h1>
+  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth</p>
+  <div class="grid">
+    <section class="panel screen"><canvas id="preview" width="122" height="250"></canvas></section>
+    <section class="panel">
+      <label for="file">选择图片</label>
+      <input id="file" type="file" accept="image/*">
+
+      <label for="fit">画面适配</label>
+      <select id="fit">
+        <option value="cover">铺满并居中裁切</option>
+        <option value="contain">完整显示并留白</option>
+      </select>
+
+      <div class="swatches">
+        <span><i style="background:#fff"></i>白</span>
+        <span><i style="background:#111"></i>黑</span>
+        <span><i style="background:#cf2028"></i>红</span>
+      </div>
+
+      <button id="connect">连接 HINK 价签</button>
+      <button id="send" disabled>发送当前图片</button>
+      <button id="test" class="secondary" disabled>显示固件内置测试图</button>
+      <button id="clear" class="secondary" disabled>全屏清白</button>
+      <progress id="progress" value="0" max="100"></progress>
+      <p id="status">等待连接。</p>
+    </section>
+  </div>
+</main>
+<script>
+(() => {
+  'use strict';
+  const WIDTH = 122, HEIGHT = 250, ROW_BYTES = 16, PLANE = 4000;
+  const SERVICE = '13187b10-eba9-a3ba-044e-83d3217d9a38';
+  const CHARACTERISTIC = '4b646063-6264-f3a7-8941-e65356ea82fe';
+  /* The inherited Telink BLE RX FIFO has 64-byte entries. Keep the complete
+     ATT packet comfortably below that limit. */
+  const CHUNK = 30;
+  const canvas = document.querySelector('#preview');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const file = document.querySelector('#file');
+  const fit = document.querySelector('#fit');
+  const connect = document.querySelector('#connect');
+  const send = document.querySelector('#send');
+  const test = document.querySelector('#test');
+  const clear = document.querySelector('#clear');
+  const progress = document.querySelector('#progress');
+  const status = document.querySelector('#status');
+  let sourceImage = null;
+  let characteristic = null;
+
+  function setStatus(text) { status.textContent = text; }
+  function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+  function setConnected(connected) {
+    send.disabled = test.disabled = clear.disabled = !connected;
+    connect.textContent = connected ? '已连接 HINK 价签' : '连接 HINK 价签';
+  }
+
+  function drawPlaceholder() {
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, WIDTH, 80);
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 1;
+    ctx.strokeRect(8.5, 86.5, 104, 72);
+    ctx.beginPath(); ctx.moveTo(9, 87); ctx.lineTo(113, 159);
+    ctx.moveTo(113, 87); ctx.lineTo(9, 159); ctx.stroke();
+    ctx.fillStyle = '#cf2028'; ctx.fillRect(0, 166, WIDTH, 84);
+  }
+
+  function quantize() {
+    if (!sourceImage) return;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    const ir = sourceImage.width / sourceImage.height;
+    const cr = WIDTH / HEIGHT;
+    let w, h, x, y;
+    if ((fit.value === 'cover') === (ir > cr)) {
+      h = HEIGHT; w = h * ir; x = (WIDTH - w) / 2; y = 0;
+    } else {
+      w = WIDTH; h = w / ir; x = 0; y = (HEIGHT - h) / 2;
+    }
+    ctx.drawImage(sourceImage, x, y, w, h);
+    const image = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+    const d = image.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+      const isRed = r > 105 && r > g * 1.28 && r > b * 1.18;
+      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      if (isRed) { d[i] = 207; d[i + 1] = 32; d[i + 2] = 40; }
+      else if (luma < 145) { d[i] = d[i + 1] = d[i + 2] = 17; }
+      else { d[i] = d[i + 1] = d[i + 2] = 255; }
+      d[i + 3] = 255;
+    }
+    ctx.putImageData(image, 0, 0);
+  }
+
+  function buildPlanes() {
+    const pixels = ctx.getImageData(0, 0, WIDTH, HEIGHT).data;
+    const out = new Uint8Array(PLANE * 2); out.fill(0xff);
+    for (let y = 0; y < HEIGHT; y++) {
+      for (let x = 0; x < WIDTH; x++) {
+        const p = (y * WIDTH + x) * 4;
+        const r = pixels[p], g = pixels[p + 1], b = pixels[p + 2];
+        const index = y * ROW_BYTES + (x >> 3);
+        const mask = 0x80 >> (x & 7);
+        const red = r > 150 && g < 100 && b < 110;
+        const black = !red && r < 100 && g < 100 && b < 100;
+        if (black) out[index] &= ~mask;
+        if (red) out[PLANE + index] &= ~mask;
+      }
+    }
+    return out;
+  }
+
+  async function write(bytes) {
+    if (!characteristic) throw new Error('尚未连接价签');
+    const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    if (characteristic.writeValueWithResponse)
+      await characteristic.writeValueWithResponse(data);
+    else
+      await characteristic.writeValue(data);
+  }
+
+  connect.addEventListener('click', async () => {
+    try {
+      if (!navigator.bluetooth) throw new Error('当前浏览器不支持 Web Bluetooth 或页面不是安全来源，请使用 Mac Chrome 并通过 HTTPS 或 localhost 打开。');
+      setStatus('请选择 HINK/HINK_XXXXXX 设备（macOS 缓存时可能显示为 ESL）…');
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [
+          { namePrefix: 'HINK' },
+          { namePrefix: 'ESL' }
+        ],
+        optionalServices: [SERVICE]
+      });
+      device.addEventListener('gattserverdisconnected', () => {
+        characteristic = null; setConnected(false); setStatus('连接已断开。');
+      });
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(SERVICE);
+      characteristic = await service.getCharacteristic(CHARACTERISTIC);
+      setConnected(true); setStatus(`已连接：${device.name || 'HINK 价签'}`);
+    } catch (error) { setConnected(false); setStatus(`连接失败：${error.message}`); }
+  });
+
+  send.addEventListener('click', async () => {
+    try {
+      send.disabled = test.disabled = clear.disabled = true;
+      const bytes = buildPlanes();
+      progress.value = 0; setStatus('正在上传 8000 字节黑/红双平面…');
+      await write([0x00, 0xff]);
+      await write([0x02, 0x00, 0x00]);
+      for (let offset = 0; offset < bytes.length; offset += CHUNK) {
+        const part = bytes.subarray(offset, Math.min(offset + CHUNK, bytes.length));
+        const packet = new Uint8Array(part.length + 1); packet[0] = 0x03; packet.set(part, 1);
+        await write(packet);
+        progress.value = Math.round((offset + part.length) * 100 / bytes.length);
+        await sleep(8);
+      }
+      await write([0x01]);
+      setStatus('上传完成，价签正在执行三色全刷（通常约 15–30 秒）。');
+    } catch (error) { setStatus(`发送失败：${error.message}`); }
+    finally { send.disabled = test.disabled = clear.disabled = !characteristic; }
+  });
+
+  test.addEventListener('click', async () => {
+    try { await write([0x05]); progress.value = 100; setStatus('已触发固件内置测试图，等待全刷完成。'); }
+    catch (error) { setStatus(`测试失败：${error.message}`); }
+  });
+
+  clear.addEventListener('click', async () => {
+    try { await write([0x00, 0xff]); await write([0x01]); setStatus('已发送全白画面，等待全刷完成。'); }
+    catch (error) { setStatus(`清屏失败：${error.message}`); }
+  });
+
+  file.addEventListener('change', () => {
+    const selected = file.files[0]; if (!selected) return;
+    const image = new Image();
+    image.onload = () => { sourceImage = image; quantize(); URL.revokeObjectURL(image.src); };
+    image.src = URL.createObjectURL(selected);
+  });
+  fit.addEventListener('change', quantize);
+  drawPlaceholder();
+})();
+</script>
+</body>
+</html>

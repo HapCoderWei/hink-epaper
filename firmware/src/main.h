@@ -1,0 +1,36 @@
+#pragma once
+#include <stdint.h>
+#include "app_config.h"
+#include "app.h"
+#include "battery.h"
+#include "ble.h"
+#include "cmd_parser.h"
+#include "epd.h"
+#include "flash.h"
+#include "i2c.h"
+#include "led.h"
+#include "nfc.h"
+#include "ota.h"
+#include "uart.h"
+
+#define LED_BLUE	GPIO_PC4
+#define LED_RED		GPIO_PC6
+#define LED_GREEN   GPIO_PC5
+
+#define RXD 		GPIO_PD7
+#define TXD			GPIO_PB1
+
+#define EPD_MOSI	GPIO_PA0
+#define EPD_CLK		GPIO_PA1
+#define EPD_CS		GPIO_PB4
+#define EPD_DC 		GPIO_PB5
+#define EPD_RESET 	GPIO_PB6
+#define EPD_BUSY 	GPIO_PB7
+/* Panel VCI/VDDIO are wired directly to VCC (continuity verified).
+ * There is NO MCU-controlled panel power switch. PC5 is the green LED. */
+
+#define NFC_SDA		GPIO_PC0
+#define NFC_SCL		GPIO_PC1
+#define NFC_CS		GPIO_PC6
+#define NFC_IRQ		GPIO_PC4
+
