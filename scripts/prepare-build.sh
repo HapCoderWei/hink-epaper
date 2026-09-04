@@ -15,7 +15,9 @@ mkdir -p "$target"
 for part in components make static_src tc32_linux; do
   cp -R "$cache/upstream/Firmware/$part" "$target/$part"
 done
+# Upstream executables may lack executable bits. Do this before parallel make;
+# its independent chmod_all target can otherwise race the first compile.
+chmod -R u+rx "$target/tc32_linux"
 cp -R "$root/firmware/src" "$target/src"
 cp "$root/firmware/makefile" "$target/makefile"
 printf 'Prepared %s\nUpstream cache retained: %s\n' "$target" "$cache"
-

@@ -48,3 +48,11 @@ B1 测试电源 3.0 V，20 mA 档，仪表型号/准确度/脉冲响应未知。
 
 本里程碑冻结已工作的显示协议和 B1 固件行为；本次发布不再次烧录设备。
 
+## 公开发布验收
+
+- 公开仓库：https://github.com/HapCoderWei/hink-epaper
+- Pages：https://hapcoderwei.github.io/hink-epaper/
+- 发布版标记：`v0.1.0-b1`。
+- GitHub Actions 主机测试和 Pages 部署成功；线上 HTML 与仓库版本哈希一致，浏览器页面正常显示。
+- 从固定上游依赖重新编译得到与已验证 B1 完全相同的固件 SHA-256。
+- 新的 HTTPS 来源下尚未重新进行真机蓝牙授权/传图；此项与网页部署成功分开记录。蓝牙协议没有变化。
