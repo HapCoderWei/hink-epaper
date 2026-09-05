@@ -22,7 +22,7 @@
     button.secondary { background: #e8e1d4; color: #28241d; }
     button:disabled { opacity: .45; cursor: not-allowed; }
     .rotation { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; }
-    .rotation button { border: 1px solid #c9c1b3; background: #fff; color: #28241d; }
+    .rotation button { border: 1px solid #cf2028; background: #faece9; color: #67151a; }
     .rotation button:focus-visible { outline: 3px solid #cf2028; outline-offset: 2px; }
     progress { width: 100%; height: 12px; margin-top: 12px; }
     #status { min-height: 44px; margin: 14px 0 0; color: #565047; white-space: pre-wrap; }
@@ -34,18 +34,12 @@
 <body>
 <main>
   <h1>HINK 2.13 三色价签</h1>
-  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth</p>
+  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth · 界面 v0.3</p>
   <div class="grid">
     <section class="panel screen"><canvas id="preview" width="122" height="250"></canvas></section>
     <section class="panel">
       <label for="file">选择图片</label>
       <input id="file" type="file" accept="image/*">
-
-      <label for="fit">画面适配</label>
-      <select id="fit">
-        <option value="cover">铺满并居中裁切</option>
-        <option value="contain">完整显示并留白</option>
-      </select>
 
       <label>图片方向</label>
       <div class="rotation" role="group" aria-label="旋转上传图片">
@@ -54,12 +48,19 @@
       </div>
       <p id="rotation-status" class="hint">当前方向：原始</p>
 
+      <label for="fit">画面适配</label>
+      <select id="fit">
+        <option value="cover">铺满并居中裁切</option>
+        <option value="contain">完整显示并留白</option>
+      </select>
+
       <label for="processing">像素处理</label>
       <select id="processing">
-        <option value="floyd-steinberg">平滑阴影（误差扩散）</option>
-        <option value="threshold">硬阈值（文字与条码）</option>
+        <option value="auto">自动选择（推荐）</option>
+        <option value="threshold">清晰边缘（文字 / Logo / 条码）</option>
+        <option value="floyd-steinberg">平滑阴影（照片）</option>
       </select>
-      <p class="hint">屏幕仍只有黑、白、红三色；抖动用像素密度模拟明暗层次。</p>
+      <p id="processing-status" class="hint">自动判断图片类型：文字与 Logo 保持边缘，照片才使用抖动。</p>
 
       <div class="swatches">
         <span><i style="background:#fff"></i>白</span>
@@ -76,7 +77,7 @@
     </section>
   </div>
 </main>
-<script src="image-processing.js?v=rotation-1"></script>
+<script src="image-processing.js?v=adaptive-2"></script>
 <script>
 (() => {
   'use strict';
@@ -94,6 +95,7 @@
   const rotateRight = document.querySelector('#rotate-right');
   const rotationStatus = document.querySelector('#rotation-status');
   const processing = document.querySelector('#processing');
+  const processingStatus = document.querySelector('#processing-status');
   const connect = document.querySelector('#connect');
   const send = document.querySelector('#send');
   const test = document.querySelector('#test');
@@ -127,6 +129,8 @@
     const placement = HinkImage.calculatePlacement(
       sourceImage.width, sourceImage.height, WIDTH, HEIGHT, fit.value, rotation);
     ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.translate(WIDTH / 2, HEIGHT / 2);
     ctx.rotate(placement.angle);
     ctx.drawImage(sourceImage,
@@ -134,14 +138,26 @@
       placement.drawWidth, placement.drawHeight);
     ctx.restore();
     const image = ctx.getImageData(0, 0, WIDTH, HEIGHT);
-    HinkImage.quantizePixels(image, processing.value);
+    const resolvedMode = HinkImage.resolveMode(image, processing.value);
+    HinkImage.quantizePixels(image, resolvedMode);
     ctx.putImageData(image, 0, 0);
+    if (processing.value === 'auto') {
+      processingStatus.textContent = resolvedMode === 'threshold'
+        ? '已识别为文字 / Logo：关闭抖动，保留清晰边缘。'
+        : '已识别为照片：使用误差扩散模拟平滑阴影。';
+    } else if (resolvedMode === 'threshold') {
+      processingStatus.textContent = '清晰边缘模式不会生成抖动杂点，适合文字、Logo 和条码。';
+    } else {
+      processingStatus.textContent = '照片模式用像素密度模拟阴影；纯色文字可能显得不够锐利。';
+    }
   }
 
   function setRotation(turns) {
     rotation = ((turns % 4) + 4) % 4;
     const labels = ['原始', '右转 90°', '旋转 180°', '左转 90°'];
     rotationStatus.textContent = `当前方向：${labels[rotation]}`;
+    if (sourceImage && sourceImage.width > sourceImage.height && (rotation & 1) === 0)
+      rotationStatus.textContent += '；横图可旋转 90°，利用更多屏幕像素。';
     quantize();
   }
 

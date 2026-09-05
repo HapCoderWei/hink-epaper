@@ -97,13 +97,37 @@
     }
   }
 
-  function quantizePixels(imageData, mode) {
+  function automaticMode(imageData) {
+    let paletteLike = 0;
+    const pixels = imageData.data;
+    const total = pixels.length / 4;
+    for (let i = 0; i < pixels.length; i += 4) {
+      const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
+      const closest = Math.min(
+        distance(r, g, b, WHITE),
+        distance(r, g, b, BLACK),
+        distance(r, g, b, RED));
+      /* Logos, text and barcodes already consist mostly of display-native
+         colors. Diffusing their JPEG/antialiasing residue only softens edges. */
+      if (closest < 1600) paletteLike++;
+    }
+    return paletteLike / total >= 0.78 ? 'threshold' : 'floyd-steinberg';
+  }
+
+  function resolveMode(imageData, requestedMode) {
     if (!imageData || !imageData.data || !imageData.width || !imageData.height)
       throw new TypeError('Invalid ImageData');
-    if (mode === 'threshold') hardThreshold(imageData.data);
-    else if (mode === 'floyd-steinberg')
+    if (requestedMode === 'auto') return automaticMode(imageData);
+    if (requestedMode === 'threshold' || requestedMode === 'floyd-steinberg')
+      return requestedMode;
+    throw new RangeError('Unknown quantization mode');
+  }
+
+  function quantizePixels(imageData, mode) {
+    const resolvedMode = resolveMode(imageData, mode);
+    if (resolvedMode === 'threshold') hardThreshold(imageData.data);
+    else
       floydSteinberg(imageData.data, imageData.width, imageData.height);
-    else throw new RangeError('Unknown quantization mode');
     return imageData;
   }
 
@@ -128,5 +152,5 @@
     };
   }
 
-  root.HinkImage = { quantizePixels, calculatePlacement };
+  root.HinkImage = { quantizePixels, resolveMode, calculatePlacement };
 })(typeof globalThis !== 'undefined' ? globalThis : window);

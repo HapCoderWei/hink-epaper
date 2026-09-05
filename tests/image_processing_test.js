@@ -18,6 +18,18 @@ function colors(result) {
   return out;
 }
 
+function stripedImage(width, height, colorsToUse) {
+  const result = image(width, height, colorsToUse[0]);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const color = colorsToUse[x % colorsToUse.length];
+      const p = (y * width + x) * 4;
+      result.data[p] = color[0]; result.data[p + 1] = color[1]; result.data[p + 2] = color[2];
+    }
+  }
+  return result;
+}
+
 for (const mode of ['threshold', 'floyd-steinberg']) {
   for (const sample of [[255,255,255], [17,17,17], [207,32,40]]) {
     const result = HinkImage.quantizePixels(image(8, 8, sample), mode);
@@ -35,6 +47,16 @@ assert(colors(mutedRed).has('207,32,40'), 'red shading must retain the red plane
 
 assert.throws(() => HinkImage.quantizePixels(image(1, 1, [0,0,0]), 'unknown'));
 
+const logo = stripedImage(100, 10, [[255,255,255], [0,0,0], [240,240,240], [12,12,12]]);
+assert.strictEqual(HinkImage.resolveMode(logo, 'auto'), 'threshold');
+const photoGradient = { width: 256, height: 1, data: new Uint8ClampedArray(256 * 4) };
+for (let x = 0; x < 256; x++) {
+  photoGradient.data[x * 4] = photoGradient.data[x * 4 + 1] = photoGradient.data[x * 4 + 2] = x;
+  photoGradient.data[x * 4 + 3] = 255;
+}
+assert.strictEqual(HinkImage.resolveMode(photoGradient, 'auto'), 'floyd-steinberg');
+assert.deepStrictEqual([...colors(HinkImage.quantizePixels(logo, 'auto'))].sort(), ['17,17,17', '255,255,255'].sort());
+
 const normal = HinkImage.calculatePlacement(100, 50, 122, 250, 'contain', 0);
 assert.strictEqual(normal.turns, 0);
 assert.strictEqual(normal.drawWidth, 122);
@@ -51,4 +73,4 @@ assert.strictEqual(left.turns, 3);
 assert.strictEqual(left.angle, Math.PI * 1.5);
 assert.throws(() => HinkImage.calculatePlacement(100, 50, 122, 250, 'stretch', 0));
 
-console.log('PASS: palette, dithering, red-plane preservation, rotation placement.');
+console.log('PASS: palette, adaptive processing, dithering, red preservation, rotation.');
