@@ -23,6 +23,7 @@ TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、三色墨水屏驱
 - [B1 里程碑与待办](docs/MILESTONE_B1.md)
 - [硬件映射、屏幕协议与移植](docs/HARDWARE.md)
 - [编译、测试与烧录](docs/BUILD.md)
+- [BLE OTA 状态与风险审计](docs/OTA_STATUS.md)
 - `firmware/src/`：当前 B1 应用源码；`firmware/makefile`：构建参数。
 - `tests/`：使用实际显示/GPIO代码的主机桩测试。
 - `site/`：独立网页工具，GitHub Pages 仅部署此目录。
@@ -35,4 +36,6 @@ TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、三色墨水屏驱
 
 ## 使用风险
 
-仅针对文档中已确认的硬件映射，不保证其他 TLSR8359 价签兼容。烧录会覆盖已有程序，应先备份自己的设备。项目不含任何设备 Flash 备份、工厂固件、个人日志或密钥。当前 BLE 写入/继承的 OTA 路径没有生产级访问认证，勿用于未经授权的设备或当作安全的商用方案。
+仅针对文档中已确认的硬件映射，不保证其他 TLSR8359 价签兼容。烧录会覆盖已有程序，应先备份自己的设备。项目不含任何设备 Flash 备份、工厂固件、个人日志或密钥。
+
+> **OTA 警告：**当前源码虽然暴露了继承的 BLE OTA 服务，但经审计发现固件校验缓冲引用、网页校验顺序、分包长度、掉电恢复和认证均存在问题。不要对唯一或已封装的价签使用 ATC OTA 页面的 `Send Firmware` / `final flash`。目前只有 SWire 写入和回读经过本项目验证；详见 [OTA 风险审计](docs/OTA_STATUS.md)。
