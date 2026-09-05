@@ -48,6 +48,10 @@ B1 测试电源 3.0 V，20 mA 档，仪表型号/准确度/脉冲响应未知。
 
 本里程碑冻结已工作的显示协议和 B1 固件行为；本次发布不再次烧录设备。
 
+后续名称修正版使用 `HINK_XXXXXX`：六位后缀来自 SDK 在 Flash `0x76000` 保存的 BLE 公共地址低三字节。它是首次生成后持久保存的设备标识，不是每次启动都变化的临时随机数。扫描响应与 GATT Device Name 使用完全相同的名称，修复 macOS 缓存后把所有设备显示成 `HINK` 的问题。此项不改变显示或低功耗策略。
+
+名称修正版标记为 `v0.1.1-name`，固件 `HINK_POWER_B1_UNIQUE_NAME.bin` 长 58,564 字节，SHA-256 `022361bddb6c36e368dfa3ff291f3b10aacf4f9906c08a38af846b78bd0f07c5`。编译和主机测试通过，尚待烧录真机验证名称显示及 B1 功能回归。
+
 ## 公开发布验收
 
 - 公开仓库：https://github.com/HapCoderWei/hink-epaper

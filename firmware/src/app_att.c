@@ -55,7 +55,10 @@ static u16 serviceChangeVal[2] = {0};
 
 static u8 serviceChangeCCC[2] = {0,0};
 
-static const u8 my_devName[] = {'H','I','N','K'};
+/* Filled from the persistent public BLE MAC by init_ble(). Keep the GAP
+ * device name consistent with the scan-response name so macOS does not cache
+ * every physical tag as the same plain "HINK" device. */
+RAM u8 my_devName[11] = {'H','I','N','K','_','0','0','0','0','0','0'};
 
 static const u8 my_PnPtrs [] = {0x02, 0x8a, 0x24, 0x66, 0x82, 0x01, 0x00};
 
@@ -205,4 +208,3 @@ void my_att_init(void)
 {
 	bls_att_setAttributeTable ((u8 *)my_Attributes);
 }
-

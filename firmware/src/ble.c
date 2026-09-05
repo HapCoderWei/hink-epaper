@@ -120,6 +120,10 @@ void init_ble(void)
 	ble_name[10] = hex_ascii[mac_public[1] & 0x0f];
 	ble_name[11] = hex_ascii[mac_public[0] >> 4];
 	ble_name[12] = hex_ascii[mac_public[0] & 0x0f];
+	/* The scan response includes its two-byte AD header; the GAP Device Name
+	 * characteristic contains only the 11 visible characters.  Both must be
+	 * identical because desktop BLE stacks may prefer/cache the GAP value. */
+	memcpy(my_devName, &ble_name[2], sizeof(my_devName));
 
 	advertising_data[4] = mac_public[5];
 	advertising_data[5] = mac_public[4];
