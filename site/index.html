@@ -17,6 +17,7 @@
     label, button, select, input { font: inherit; }
     label { display: block; font-weight: 650; margin: 0 0 8px; }
     input[type=file], select { width: 100%; box-sizing: border-box; margin-bottom: 18px; padding: 10px; border: 1px solid #c9c1b3; border-radius: 10px; background: #fff; }
+    .hint { margin: -10px 0 18px; color: #777064; font-size: 13px; line-height: 1.45; }
     button { width: 100%; border: 0; border-radius: 11px; padding: 12px 14px; margin: 0 0 10px; font-weight: 700; cursor: pointer; background: #171713; color: #fff; }
     button.secondary { background: #e8e1d4; color: #28241d; }
     button:disabled { opacity: .45; cursor: not-allowed; }
@@ -43,6 +44,13 @@
         <option value="contain">完整显示并留白</option>
       </select>
 
+      <label for="processing">像素处理</label>
+      <select id="processing">
+        <option value="floyd-steinberg">平滑阴影（误差扩散）</option>
+        <option value="threshold">硬阈值（文字与条码）</option>
+      </select>
+      <p class="hint">屏幕仍只有黑、白、红三色；抖动用像素密度模拟明暗层次。</p>
+
       <div class="swatches">
         <span><i style="background:#fff"></i>白</span>
         <span><i style="background:#111"></i>黑</span>
@@ -58,6 +66,7 @@
     </section>
   </div>
 </main>
+<script src="image-processing.js"></script>
 <script>
 (() => {
   'use strict';
@@ -71,6 +80,7 @@
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const file = document.querySelector('#file');
   const fit = document.querySelector('#fit');
+  const processing = document.querySelector('#processing');
   const connect = document.querySelector('#connect');
   const send = document.querySelector('#send');
   const test = document.querySelector('#test');
@@ -110,16 +120,7 @@
     }
     ctx.drawImage(sourceImage, x, y, w, h);
     const image = ctx.getImageData(0, 0, WIDTH, HEIGHT);
-    const d = image.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2];
-      const isRed = r > 105 && r > g * 1.28 && r > b * 1.18;
-      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      if (isRed) { d[i] = 207; d[i + 1] = 32; d[i + 2] = 40; }
-      else if (luma < 145) { d[i] = d[i + 1] = d[i + 2] = 17; }
-      else { d[i] = d[i + 1] = d[i + 2] = 255; }
-      d[i + 3] = 255;
-    }
+    HinkImage.quantizePixels(image, processing.value);
     ctx.putImageData(image, 0, 0);
   }
 
@@ -208,6 +209,7 @@
     image.src = URL.createObjectURL(selected);
   });
   fit.addEventListener('change', quantize);
+  processing.addEventListener('change', quantize);
   drawPlaceholder();
 })();
 </script>

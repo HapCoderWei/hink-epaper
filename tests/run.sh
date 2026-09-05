@@ -8,5 +8,5 @@ sed '/^#include/d' "$source_dir/src/epd.c" >> "$test_dir/production.inc"
 sed '/^#include/d' "$source_dir/src/led.c" >> "$test_dir/production.inc"
 cc -std=c99 -Wall -Wextra -Werror -I "$test_dir" "$root/tests/epd_power_test.c" -o "$test_dir/epd_power_test"
 "$test_dir/epd_power_test"
+node "$root/tests/image_processing_test.js"
 printf 'Generated test files retained at %s\n' "$test_dir"
-
