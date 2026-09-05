@@ -34,7 +34,7 @@
 <body>
 <main>
   <h1>HINK 2.13 三色价签</h1>
-  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth · 界面 v0.3</p>
+  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth · 界面 v0.4</p>
   <div class="grid">
     <section class="panel screen"><canvas id="preview" width="122" height="250"></canvas></section>
     <section class="panel">
@@ -69,6 +69,8 @@
       </div>
 
       <button id="connect">连接 HINK 价签</button>
+      <button id="connect-all" class="secondary">找不到？扫描全部 BLE 设备</button>
+      <p class="hint">列表为空或名称异常时使用；请选择 HINK、ESL 或可能显示为未知名称的价签。</p>
       <button id="send" disabled>发送当前图片</button>
       <button id="test" class="secondary" disabled>显示固件内置测试图</button>
       <button id="clear" class="secondary" disabled>全屏清白</button>
@@ -97,6 +99,7 @@
   const processing = document.querySelector('#processing');
   const processingStatus = document.querySelector('#processing-status');
   const connect = document.querySelector('#connect');
+  const connectAll = document.querySelector('#connect-all');
   const send = document.querySelector('#send');
   const test = document.querySelector('#test');
   const clear = document.querySelector('#clear');
@@ -110,6 +113,7 @@
   function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
   function setConnected(connected) {
     send.disabled = test.disabled = clear.disabled = !connected;
+    connect.disabled = connectAll.disabled = connected;
     connect.textContent = connected ? '已连接 HINK 价签' : '连接 HINK 价签';
   }
 
@@ -188,17 +192,23 @@
       await characteristic.writeValue(data);
   }
 
-  connect.addEventListener('click', async () => {
+  async function connectDevice(scanAll) {
     try {
       if (!navigator.bluetooth) throw new Error('当前浏览器不支持 Web Bluetooth 或页面不是安全来源，请使用 Mac Chrome 并通过 HTTPS 或 localhost 打开。');
-      setStatus('请选择 HINK/HINK_XXXXXX 设备（macOS 缓存时可能显示为 ESL）…');
-      const device = await navigator.bluetooth.requestDevice({
-        filters: [
-          { namePrefix: 'HINK' },
-          { namePrefix: 'ESL' }
-        ],
-        optionalServices: [SERVICE]
-      });
+      connect.disabled = connectAll.disabled = true;
+      setStatus(scanAll
+        ? '正在扫描全部 BLE 设备，请选择 HINK、ESL 或未知名称的价签…'
+        : '请选择 HINK/HINK_XXXXXX 设备（macOS 缓存时可能显示为 ESL）…');
+      const request = scanAll
+        ? { acceptAllDevices: true, optionalServices: [SERVICE] }
+        : {
+            filters: [
+              { namePrefix: 'HINK' },
+              { namePrefix: 'ESL' }
+            ],
+            optionalServices: [SERVICE]
+          };
+      const device = await navigator.bluetooth.requestDevice(request);
       device.addEventListener('gattserverdisconnected', () => {
         characteristic = null; setConnected(false); setStatus('连接已断开。');
       });
@@ -206,8 +216,19 @@
       const service = await server.getPrimaryService(SERVICE);
       characteristic = await service.getCharacteristic(CHARACTERISTIC);
       setConnected(true); setStatus(`已连接：${device.name || 'HINK 价签'}`);
-    } catch (error) { setConnected(false); setStatus(`连接失败：${error.message}`); }
-  });
+    } catch (error) {
+      setConnected(false);
+      setStatus(error.name === 'NotFoundError'
+        ? '没有选中设备。如果列表为空，请确认价签供电后使用“扫描全部 BLE 设备”。'
+        : `连接失败：${error.message}`);
+    } finally {
+      connect.disabled = !!characteristic;
+      connectAll.disabled = !!characteristic;
+    }
+  }
+
+  connect.addEventListener('click', () => connectDevice(false));
+  connectAll.addEventListener('click', () => connectDevice(true));
 
   send.addEventListener('click', async () => {
     try {
