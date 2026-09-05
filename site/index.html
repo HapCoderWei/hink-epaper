@@ -21,6 +21,9 @@
     button { width: 100%; border: 0; border-radius: 11px; padding: 12px 14px; margin: 0 0 10px; font-weight: 700; cursor: pointer; background: #171713; color: #fff; }
     button.secondary { background: #e8e1d4; color: #28241d; }
     button:disabled { opacity: .45; cursor: not-allowed; }
+    .rotation { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; }
+    .rotation button { border: 1px solid #c9c1b3; background: #fff; color: #28241d; }
+    .rotation button:focus-visible { outline: 3px solid #cf2028; outline-offset: 2px; }
     progress { width: 100%; height: 12px; margin-top: 12px; }
     #status { min-height: 44px; margin: 14px 0 0; color: #565047; white-space: pre-wrap; }
     .swatches { display: flex; gap: 12px; font-size: 13px; margin: 4px 0 18px; color: #625c53; }
@@ -44,6 +47,13 @@
         <option value="contain">完整显示并留白</option>
       </select>
 
+      <label>图片方向</label>
+      <div class="rotation" role="group" aria-label="旋转上传图片">
+        <button id="rotate-left" type="button" disabled aria-label="向左旋转 90 度">↶ 左转 90°</button>
+        <button id="rotate-right" type="button" disabled aria-label="向右旋转 90 度">↷ 右转 90°</button>
+      </div>
+      <p id="rotation-status" class="hint">当前方向：原始</p>
+
       <label for="processing">像素处理</label>
       <select id="processing">
         <option value="floyd-steinberg">平滑阴影（误差扩散）</option>
@@ -66,7 +76,7 @@
     </section>
   </div>
 </main>
-<script src="image-processing.js"></script>
+<script src="image-processing.js?v=rotation-1"></script>
 <script>
 (() => {
   'use strict';
@@ -80,6 +90,9 @@
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const file = document.querySelector('#file');
   const fit = document.querySelector('#fit');
+  const rotateLeft = document.querySelector('#rotate-left');
+  const rotateRight = document.querySelector('#rotate-right');
+  const rotationStatus = document.querySelector('#rotation-status');
   const processing = document.querySelector('#processing');
   const connect = document.querySelector('#connect');
   const send = document.querySelector('#send');
@@ -88,6 +101,7 @@
   const progress = document.querySelector('#progress');
   const status = document.querySelector('#status');
   let sourceImage = null;
+  let rotation = 0;
   let characteristic = null;
 
   function setStatus(text) { status.textContent = text; }
@@ -110,18 +124,25 @@
   function quantize() {
     if (!sourceImage) return;
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    const ir = sourceImage.width / sourceImage.height;
-    const cr = WIDTH / HEIGHT;
-    let w, h, x, y;
-    if ((fit.value === 'cover') === (ir > cr)) {
-      h = HEIGHT; w = h * ir; x = (WIDTH - w) / 2; y = 0;
-    } else {
-      w = WIDTH; h = w / ir; x = 0; y = (HEIGHT - h) / 2;
-    }
-    ctx.drawImage(sourceImage, x, y, w, h);
+    const placement = HinkImage.calculatePlacement(
+      sourceImage.width, sourceImage.height, WIDTH, HEIGHT, fit.value, rotation);
+    ctx.save();
+    ctx.translate(WIDTH / 2, HEIGHT / 2);
+    ctx.rotate(placement.angle);
+    ctx.drawImage(sourceImage,
+      -placement.drawWidth / 2, -placement.drawHeight / 2,
+      placement.drawWidth, placement.drawHeight);
+    ctx.restore();
     const image = ctx.getImageData(0, 0, WIDTH, HEIGHT);
     HinkImage.quantizePixels(image, processing.value);
     ctx.putImageData(image, 0, 0);
+  }
+
+  function setRotation(turns) {
+    rotation = ((turns % 4) + 4) % 4;
+    const labels = ['原始', '右转 90°', '旋转 180°', '左转 90°'];
+    rotationStatus.textContent = `当前方向：${labels[rotation]}`;
+    quantize();
   }
 
   function buildPlanes() {
@@ -205,11 +226,18 @@
   file.addEventListener('change', () => {
     const selected = file.files[0]; if (!selected) return;
     const image = new Image();
-    image.onload = () => { sourceImage = image; quantize(); URL.revokeObjectURL(image.src); };
+    image.onload = () => {
+      sourceImage = image;
+      rotateLeft.disabled = rotateRight.disabled = false;
+      setRotation(0);
+      URL.revokeObjectURL(image.src);
+    };
     image.src = URL.createObjectURL(selected);
   });
   fit.addEventListener('change', quantize);
   processing.addEventListener('change', quantize);
+  rotateLeft.addEventListener('click', () => setRotation(rotation - 1));
+  rotateRight.addEventListener('click', () => setRotation(rotation + 1));
   drawPlaceholder();
 })();
 </script>

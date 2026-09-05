@@ -107,6 +107,26 @@
     return imageData;
   }
 
-  root.HinkImage = { quantizePixels };
-})(typeof globalThis !== 'undefined' ? globalThis : window);
+  function calculatePlacement(sourceWidth, sourceHeight, targetWidth, targetHeight, fit, quarterTurns) {
+    if (![sourceWidth, sourceHeight, targetWidth, targetHeight].every(value => value > 0))
+      throw new RangeError('Image dimensions must be positive');
+    if (fit !== 'cover' && fit !== 'contain')
+      throw new RangeError('Unknown image fit mode');
 
+    const turns = ((quarterTurns % 4) + 4) % 4;
+    const rotatedWidth = (turns & 1) ? sourceHeight : sourceWidth;
+    const rotatedHeight = (turns & 1) ? sourceWidth : sourceHeight;
+    const scale = fit === 'cover'
+      ? Math.max(targetWidth / rotatedWidth, targetHeight / rotatedHeight)
+      : Math.min(targetWidth / rotatedWidth, targetHeight / rotatedHeight);
+
+    return {
+      turns,
+      angle: turns * Math.PI / 2,
+      drawWidth: sourceWidth * scale,
+      drawHeight: sourceHeight * scale
+    };
+  }
+
+  root.HinkImage = { quantizePixels, calculatePlacement };
+})(typeof globalThis !== 'undefined' ? globalThis : window);

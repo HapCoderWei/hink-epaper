@@ -34,5 +34,21 @@ const mutedRed = HinkImage.quantizePixels(image(32, 32, [170,70,75]), 'floyd-ste
 assert(colors(mutedRed).has('207,32,40'), 'red shading must retain the red plane');
 
 assert.throws(() => HinkImage.quantizePixels(image(1, 1, [0,0,0]), 'unknown'));
-console.log('PASS: exact palette, neutral shadow dithering, red-plane preservation.');
 
+const normal = HinkImage.calculatePlacement(100, 50, 122, 250, 'contain', 0);
+assert.strictEqual(normal.turns, 0);
+assert.strictEqual(normal.drawWidth, 122);
+assert.strictEqual(normal.drawHeight, 61);
+
+const right = HinkImage.calculatePlacement(100, 50, 122, 250, 'contain', 1);
+assert.strictEqual(right.turns, 1);
+assert.strictEqual(right.drawWidth, 244);
+assert.strictEqual(right.drawHeight, 122);
+assert.strictEqual(right.angle, Math.PI / 2);
+
+const left = HinkImage.calculatePlacement(100, 50, 122, 250, 'contain', -1);
+assert.strictEqual(left.turns, 3);
+assert.strictEqual(left.angle, Math.PI * 1.5);
+assert.throws(() => HinkImage.calculatePlacement(100, 50, 122, 250, 'stretch', 0));
+
+console.log('PASS: palette, dithering, red-plane preservation, rotation placement.');
