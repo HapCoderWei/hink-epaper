@@ -87,12 +87,22 @@ _attribute_ram_code_ void ble_set_connection_speed(uint16_t speed)
 
 _attribute_ram_code_ int otaWritePre(void *p)
 {
+	int result;
+	u8 request_fast_connection = (ota_started == 0);
+
+	/* Queue the command response before requesting a connection-parameter
+	 * update.  On TLSR8359 the L2CAP update can occupy the TX path and drop
+	 * the first OTA notification when it is requested before custom_otaWrite(). */
+	result = custom_otaWrite(p);
 	if (ota_started == 0)
 	{
 		ota_started = 1;
+	}
+	if (request_fast_connection)
+	{
 		ble_set_connection_speed(6);
 	}
-	return custom_otaWrite(p);
+	return result;
 }
 
 _attribute_ram_code_ int RxTxWrite(void *p)

@@ -18,3 +18,9 @@
 GitHub Pages 通过 `.github/workflows/pages.yml` 发布 `site/`，不会部署固件和硬件文档目录。站点公开不等于跨互联网能直接控制蓝牙，但附近的人可能用兼容客户端写入未认证价签。
 
 参考：[GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)、[Chrome Web Bluetooth](https://developer.chrome.com/docs/capabilities/bluetooth)。
+
+## OTA v2 实验区
+
+网页 v0.5 增加了折叠的“固件升级实验区”。它首先向 `0x221f/0x331f` 发送 OTA v2 `INFO` 握手，只有运行 M0/M1 开发固件的测试价签才会启用文件选择。已发布 B1、`v0.1.1-name` 以及继承的旧 ATC OTA 服务不会通过握手。客户端接受 20 字节 M0、24 字节 M1-B 和 28 字节 M1-C 状态；扩展字段显示当前版本、当前槽和非活动目标槽。
+
+M0 只执行暂存区擦除、顺序小包上传、逐包 Flash 读回和 CRC32 校验。M1 改为写 SDK 选择的非活动启动槽，上传时把候选镜像偏移 8 保持为 `0xFF`，并在结束时复读验证 HINK 清单、Telink 头部/长度及两层 CRC。仅当设备声明安装能力、候选清单有效且状态为 `VERIFIED` 时，页面才显示安装区；用户还必须勾选稳定外部 3.3 V/SWire 确认，并分别点击“授权安装”和“切换槽位并重启”。上传达到 100% 本身仍不代表设备已经升级。完整阶段和真机验收条件见 [OTA v2 里程碑](MILESTONE_OTA_V2.md)。

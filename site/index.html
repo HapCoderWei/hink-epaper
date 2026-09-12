@@ -28,13 +28,17 @@
     #status { min-height: 44px; margin: 14px 0 0; color: #565047; white-space: pre-wrap; }
     .swatches { display: flex; gap: 12px; font-size: 13px; margin: 4px 0 18px; color: #625c53; }
     .swatches i { display: inline-block; width: 12px; height: 12px; border: 1px solid #777; margin-right: 4px; vertical-align: -2px; }
+    details.ota { margin-top: 24px; padding-top: 18px; border-top: 1px solid #d8d1c4; }
+    details.ota summary { cursor: pointer; font-weight: 750; margin-bottom: 14px; }
+    .warning { padding: 10px 12px; border-radius: 10px; background: #fff1d6; color: #65430b; font-size: 13px; line-height: 1.5; }
+    #ota-status { min-height: 44px; margin: 12px 0 0; color: #565047; white-space: pre-wrap; }
     @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } .screen { min-height: auto; } }
   </style>
 </head>
 <body>
 <main>
   <h1>HINK 2.13 三色价签</h1>
-  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth · 界面 v0.4</p>
+  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth · 界面 v0.6 OTA v2 M1</p>
   <div class="grid">
     <section class="panel screen"><canvas id="preview" width="122" height="250"></canvas></section>
     <section class="panel">
@@ -76,6 +80,22 @@
       <button id="clear" class="secondary" disabled>全屏清白</button>
       <progress id="progress" value="0" max="100"></progress>
       <p id="status">等待连接。</p>
+
+      <details class="ota">
+        <summary>固件升级实验区（OTA v2 M1）</summary>
+        <p class="warning">上传与校验不会安装。支持 M1-C 的价签会在校验通过后显示独立的两步安装区，安装会切换启动槽并重启。</p>
+        <label for="firmware">选择 HINK 固件（.bin）</label>
+        <input id="firmware" type="file" accept=".bin,application/octet-stream" disabled>
+        <button id="ota-stage" class="secondary" disabled>上传到暂存区并校验（不安装）</button>
+        <progress id="ota-progress" value="0" max="100"></progress>
+        <p id="ota-status">连接支持 OTA v2 M0 的测试价签后才能使用。</p>
+        <div id="ota-install-panel" hidden>
+          <p class="warning">安装前保持外部 3.3 V 稳定，并保持 SWire 救援连接可用。</p>
+          <label><input id="ota-power-confirm" type="checkbox"> 我已确认外部 3.3 V 稳定且 SWire 可立即救援</label>
+          <button id="ota-arm" class="secondary" disabled>第一步：授权安装</button>
+          <button id="ota-install" disabled>第二步：切换槽位并重启</button>
+        </div>
+      </details>
     </section>
   </div>
 </main>
@@ -86,6 +106,13 @@
   const WIDTH = 122, HEIGHT = 250, ROW_BYTES = 16, PLANE = 4000;
   const SERVICE = '13187b10-eba9-a3ba-044e-83d3217d9a38';
   const CHARACTERISTIC = '4b646063-6264-f3a7-8941-e65356ea82fe';
+  const OTA_SERVICE = '0000221f-0000-1000-8000-00805f9b34fb';
+  const OTA_CHARACTERISTIC = '0000331f-0000-1000-8000-00805f9b34fb';
+  const OTA_PROTOCOL = 1, OTA_BOARD_ID = 0x213a, OTA_MAX_IMAGE = 0x1f000;
+  const OTA_INFO = 0x10, OTA_BEGIN = 0x11, OTA_ERASE_NEXT = 0x12;
+  const OTA_DATA = 0x13, OTA_FINISH = 0x14, OTA_ABORT = 0x16;
+  const OTA_ARM_INSTALL = 0x17, OTA_INSTALL = 0x18;
+  const OTA_ARM_CONFIRM = 0x314d5241, OTA_INSTALL_CONFIRM = 0x31534e49;
   /* The inherited Telink BLE RX FIFO has 64-byte entries. Keep the complete
      ATT packet comfortably below that limit. */
   const CHUNK = 30;
@@ -105,9 +132,26 @@
   const clear = document.querySelector('#clear');
   const progress = document.querySelector('#progress');
   const status = document.querySelector('#status');
+  const firmware = document.querySelector('#firmware');
+  const otaStage = document.querySelector('#ota-stage');
+  const otaProgress = document.querySelector('#ota-progress');
+  const otaStatus = document.querySelector('#ota-status');
+  const otaInstallPanel = document.querySelector('#ota-install-panel');
+  const otaPowerConfirm = document.querySelector('#ota-power-confirm');
+  const otaArm = document.querySelector('#ota-arm');
+  const otaInstall = document.querySelector('#ota-install');
   let sourceImage = null;
   let rotation = 0;
   let characteristic = null;
+  let otaCharacteristic = null;
+  let otaSupported = false;
+  let otaPending = null;
+  let otaMaxData = 24;
+  let otaMilestone = 0;
+  let otaCapabilities = 0;
+  let otaInfo = null;
+  let otaCandidate = null;
+  let otaLastResponse = null;
 
   function setStatus(text) { status.textContent = text; }
   function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
@@ -115,6 +159,17 @@
     send.disabled = test.disabled = clear.disabled = !connected;
     connect.disabled = connectAll.disabled = connected;
     connect.textContent = connected ? '已连接 HINK 价签' : '连接 HINK 价签';
+    updateOtaControls();
+  }
+
+  function updateOtaControls() {
+    firmware.disabled = !otaSupported;
+    otaStage.disabled = !otaSupported || !firmware.files.length || !otaCandidate;
+    const installReady = !!(otaCapabilities & 1) && !!otaCandidate &&
+      !!otaLastResponse && otaLastResponse.phase >= 3 && otaLastResponse.phase <= 5;
+    otaInstallPanel.hidden = !installReady;
+    otaArm.disabled = !installReady || otaLastResponse.phase !== 3 || !otaPowerConfirm.checked;
+    otaInstall.disabled = !installReady || otaLastResponse.phase !== 5 || !otaPowerConfirm.checked;
   }
 
   function drawPlaceholder() {
@@ -183,13 +238,163 @@
     return out;
   }
 
-  async function write(bytes) {
-    if (!characteristic) throw new Error('尚未连接价签');
+  async function writeCharacteristic(target, bytes) {
+    if (!target) throw new Error('尚未连接价签');
     const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-    if (characteristic.writeValueWithResponse)
-      await characteristic.writeValueWithResponse(data);
+    if (target.writeValueWithResponse)
+      await target.writeValueWithResponse(data);
     else
-      await characteristic.writeValue(data);
+      await target.writeValue(data);
+  }
+
+  async function write(bytes) {
+    await writeCharacteristic(characteristic, bytes);
+  }
+
+  function otaResponse(event) {
+    if (!otaPending) return;
+    const view = event.target.value;
+    otaPending.response = new Uint8Array(view.buffer, view.byteOffset, view.byteLength).slice();
+    finishOtaCommand();
+  }
+
+  function finishOtaCommand() {
+    if (!otaPending || !otaPending.writeDone || !otaPending.response) return;
+    const pending = otaPending;
+    otaPending = null;
+    clearTimeout(pending.timer);
+    pending.resolve(pending.response);
+  }
+
+  function otaCommand(bytes, timeoutMs = 10000) {
+    if (!otaCharacteristic) return Promise.reject(new Error('没有 OTA v2 连接'));
+    if (otaPending) return Promise.reject(new Error('上一条 OTA 命令尚未完成'));
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        otaPending = null;
+        reject(new Error('等待价签 OTA 回应超时'));
+      }, timeoutMs);
+      const pending = { resolve, reject, timer, writeDone: false, response: null };
+      otaPending = pending;
+      writeCharacteristic(otaCharacteristic, bytes).then(() => {
+        if (otaPending === pending) {
+          pending.writeDone = true;
+          finishOtaCommand();
+        }
+      }).catch(error => {
+        if (otaPending === pending) {
+          clearTimeout(timer);
+          otaPending = null;
+        }
+        reject(error);
+      });
+    });
+  }
+
+  function parseOtaResponse(bytes, expectedCommand) {
+    if (bytes.length < 20 || bytes[0] !== 0xa2 || bytes[1] !== OTA_PROTOCOL)
+      throw new Error('设备返回的不是 HINK OTA v2 协议');
+    if (bytes[2] !== expectedCommand)
+      throw new Error(`OTA 回应错序：期望 0x${expectedCommand.toString(16)}，收到 0x${bytes[2].toString(16)}`);
+    const statusNames = [
+      '成功', '命令长度错误', '协议版本不匹配', '硬件型号不匹配', '当前阶段不允许该操作',
+      '地址或长度越界', '分包偏移不连续', 'Flash 写入后读回不一致', 'CRC32 不一致', '未知命令',
+      '固件清单无效', 'Telink 镜像头或原生 CRC 无效', '需要安装确认', '启动标记校验失败', '不支持的启动槽布局'
+    ];
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const response = {
+      command: bytes[2], status: bytes[3], phase: bytes[4],
+      erased: bytes[5], sectors: bytes[6], maxData: bytes[7],
+      received: view.getUint32(8, true), size: view.getUint32(12, true),
+      crc32: view.getUint32(16, true),
+      capabilities: bytes.length >= 24 ? bytes[20] : 0,
+      currentSlot: bytes.length >= 24 ? bytes[21] : null,
+      targetSlot: bytes.length >= 24 ? bytes[22] : null,
+      milestone: bytes.length >= 24 ? bytes[23] : 0,
+      firmwareVersion: bytes.length >= 28 ? view.getUint32(24, true) : null
+    };
+    if (response.status !== 0)
+      throw new Error(statusNames[response.status] || `设备错误 ${response.status}`);
+    return response;
+  }
+
+  function putU32LE(target, offset, value) {
+    new DataView(target.buffer, target.byteOffset, target.byteLength).setUint32(offset, value >>> 0, true);
+  }
+
+  function crc32(bytes) {
+    let crc = 0xffffffff;
+    for (const value of bytes) {
+      crc ^= value;
+      for (let bit = 0; bit < 8; bit++)
+        crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function parseManifest(image) {
+    if (image.length < 56) throw new Error('固件过短，缺少 Telink 头或 HINK 清单');
+    const manifest = image.subarray(image.length - 24);
+    const view = new DataView(manifest.buffer, manifest.byteOffset, manifest.byteLength);
+    if (String.fromCharCode(...manifest.subarray(0, 4)) !== 'HOTA' ||
+        manifest[4] !== 1 || manifest[5] !== 0 || view.getUint16(6, true) !== OTA_BOARD_ID)
+      throw new Error('HINK 固件清单格式或硬件型号不匹配');
+    const payload = image.subarray(0, image.length - 24);
+    if (view.getUint32(8, true) !== payload.length ||
+        view.getUint32(12, true) !== crc32(payload) ||
+        view.getUint32(20, true) !== crc32(manifest.subarray(0, 20)))
+      throw new Error('HINK 固件清单长度或 CRC32 无效');
+    const payloadView = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+    if (String.fromCharCode(...payload.subarray(8, 12)) !== 'KNLT' ||
+        payloadView.getUint32(0x18, true) + 4 !== payload.length)
+      throw new Error('Telink 固件头无效');
+    const nativeCrc = payloadView.getUint32(payload.length - 4, false);
+    if (nativeCrc !== crc32(payload.subarray(0, payload.length - 4)))
+      throw new Error('Telink 原生 CRC32 无效');
+    return { image, version: view.getUint32(16, true), crc32: crc32(image) };
+  }
+
+  async function probeOta(server) {
+    otaSupported = false;
+    otaCharacteristic = null;
+    updateOtaControls();
+    try {
+      const service = await server.getPrimaryService(OTA_SERVICE);
+      otaCharacteristic = await service.getCharacteristic(OTA_CHARACTERISTIC);
+      await otaCharacteristic.startNotifications();
+      otaCharacteristic.addEventListener('characteristicvaluechanged', otaResponse);
+      let infoBytes;
+      try {
+        infoBytes = await otaCommand([OTA_INFO], 3000);
+      } catch (firstError) {
+        /* The first packet can coincide with a peripheral connection-parameter
+         * update.  A single same-connection retry is safe: INFO is read-only. */
+        await new Promise(resolve => setTimeout(resolve, 350));
+        infoBytes = await otaCommand([OTA_INFO], 3000);
+      }
+      const response = parseOtaResponse(infoBytes, OTA_INFO);
+      otaMaxData = Math.min(response.maxData || 24, 24);
+      otaMilestone = response.milestone;
+      otaCapabilities = response.capabilities;
+      otaInfo = response;
+      otaLastResponse = response;
+      otaSupported = true;
+      if (response.milestone >= 1) {
+        const current = response.currentSlot === 0 ? 'A' : response.currentSlot === 1 ? 'B' : '未知';
+        const target = response.targetSlot === 0 ? 'A' : response.targetSlot === 1 ? 'B' : '未知';
+        const version = response.firmwareVersion == null ? '未知' : response.firmwareVersion;
+        const install = response.capabilities & 1 ? '支持两步确认安装' : '只能上传和校验';
+        otaStatus.textContent = `已识别 OTA v2 M1：当前版本 ${version}，当前槽 ${current}，非活动目标槽 ${target}；${install}。`;
+      } else {
+        otaStatus.textContent = '已识别 OTA v2 M0：可安全测试上传与校验；本阶段不能安装。';
+      }
+    } catch (error) {
+      otaCharacteristic = null;
+      otaCapabilities = 0;
+      otaInfo = otaLastResponse = null;
+      otaStatus.textContent = `当前固件没有安全 OTA v2：${error.message}`;
+    }
+    updateOtaControls();
   }
 
   async function connectDevice(scanAll) {
@@ -200,22 +405,38 @@
         ? '正在扫描全部 BLE 设备，请选择 HINK、ESL 或未知名称的价签…'
         : '请选择 HINK/HINK_XXXXXX 设备（macOS 缓存时可能显示为 ESL）…');
       const request = scanAll
-        ? { acceptAllDevices: true, optionalServices: [SERVICE] }
+        ? { acceptAllDevices: true, optionalServices: [SERVICE, OTA_SERVICE] }
         : {
             filters: [
               { namePrefix: 'HINK' },
               { namePrefix: 'ESL' }
             ],
-            optionalServices: [SERVICE]
+            optionalServices: [SERVICE, OTA_SERVICE]
           };
       const device = await navigator.bluetooth.requestDevice(request);
       device.addEventListener('gattserverdisconnected', () => {
-        characteristic = null; setConnected(false); setStatus('连接已断开。');
+        characteristic = null;
+        otaCharacteristic = null;
+        otaSupported = false;
+        otaMilestone = 0;
+        otaCapabilities = 0;
+        otaInfo = otaCandidate = otaLastResponse = null;
+        if (otaPending) {
+          clearTimeout(otaPending.timer);
+          otaPending.reject(new Error('OTA 期间蓝牙连接断开'));
+          otaPending = null;
+        }
+        setConnected(false);
+        setStatus('连接已断开。');
+        otaStatus.textContent = '连接已断开。';
       });
       const server = await device.gatt.connect();
       const service = await server.getPrimaryService(SERVICE);
       characteristic = await service.getCharacteristic(CHARACTERISTIC);
-      setConnected(true); setStatus(`已连接：${device.name || 'HINK 价签'}`);
+      setConnected(true);
+      setStatus(`已连接：${device.name || 'HINK 价签'}；正在检查 OTA 能力…`);
+      await probeOta(server);
+      setStatus(`已连接：${device.name || 'HINK 价签'}`);
     } catch (error) {
       setConnected(false);
       setStatus(error.name === 'NotFoundError'
@@ -229,6 +450,124 @@
 
   connect.addEventListener('click', () => connectDevice(false));
   connectAll.addEventListener('click', () => connectDevice(true));
+
+  firmware.addEventListener('change', async () => {
+    otaProgress.value = 0;
+    otaCandidate = null;
+    otaLastResponse = otaInfo;
+    if (!firmware.files.length) {
+      otaStatus.textContent = '请选择 HINK 的 .bin 固件。';
+    } else {
+      const selected = firmware.files[0];
+      try {
+        otaCandidate = parseManifest(new Uint8Array(await selected.arrayBuffer()));
+        otaStatus.textContent = `已选择 ${selected.name}：候选版本 ${otaCandidate.version}，${selected.size.toLocaleString()} 字节，CRC32 ${otaCandidate.crc32.toString(16).padStart(8, '0').toUpperCase()}；尚未上传。`;
+      } catch (error) {
+        otaStatus.textContent = `不能使用这个固件：${error.message}`;
+      }
+    }
+    updateOtaControls();
+  });
+
+  otaStage.addEventListener('click', async () => {
+    const selected = firmware.files[0];
+    if (!selected || !otaSupported) return;
+    otaStage.disabled = true;
+    send.disabled = test.disabled = clear.disabled = true;
+    otaProgress.value = 0;
+    try {
+      const image = new Uint8Array(await selected.arrayBuffer());
+      if (!image.length || image.length > OTA_MAX_IMAGE)
+        throw new Error(`固件长度必须是 1～${OTA_MAX_IMAGE.toLocaleString()} 字节`);
+
+      otaCandidate = parseManifest(image);
+      const imageCrc = otaCandidate.crc32;
+      const begin = new Uint8Array(12);
+      begin[0] = OTA_BEGIN;
+      begin[1] = OTA_PROTOCOL;
+      begin[2] = OTA_BOARD_ID & 0xff;
+      begin[3] = OTA_BOARD_ID >> 8;
+      putU32LE(begin, 4, image.length);
+      putU32LE(begin, 8, imageCrc);
+      let response = parseOtaResponse(await otaCommand(begin), OTA_BEGIN);
+
+      otaStatus.textContent = `正在擦除 ${response.sectors} 个暂存扇区；当前启动固件不受影响…`;
+      while (response.erased < response.sectors) {
+        response = parseOtaResponse(await otaCommand([OTA_ERASE_NEXT], 15000), OTA_ERASE_NEXT);
+        otaProgress.value = Math.round(response.erased * 10 / response.sectors);
+      }
+
+      otaStatus.textContent = `暂存区已准备，正在上传并逐包读回校验…\nCRC32：${imageCrc.toString(16).padStart(8, '0').toUpperCase()}`;
+      for (let offset = 0; offset < image.length;) {
+        const pageRemaining = 256 - (offset & 255);
+        const length = Math.min(otaMaxData, pageRemaining, image.length - offset);
+        const packet = new Uint8Array(5 + length);
+        packet[0] = OTA_DATA;
+        putU32LE(packet, 1, offset);
+        packet.set(image.subarray(offset, offset + length), 5);
+        response = parseOtaResponse(await otaCommand(packet), OTA_DATA);
+        offset += length;
+        if (response.received !== offset)
+          throw new Error(`设备确认偏移异常：${response.received}，期望 ${offset}`);
+        otaProgress.value = 10 + Math.round(offset * 88 / image.length);
+      }
+
+      response = parseOtaResponse(await otaCommand([OTA_FINISH]), OTA_FINISH);
+      if (response.phase !== 3 || response.crc32 !== imageCrc)
+        throw new Error('设备没有进入“已验证”状态');
+      otaProgress.value = 100;
+      otaLastResponse = response;
+      const stageName = otaMilestone >= 1 ? 'M1 非活动槽' : 'M0 暂存区';
+      const safetyNote = otaMilestone >= 1
+        ? '候选启动标记仍被屏蔽；尚未安装、没有重启、没有改动当前启动固件。'
+        : '没有安装、没有重启、没有改动当前启动固件。';
+      otaStatus.textContent = `${stageName}验证通过：候选版本 ${otaCandidate.version}，${image.length.toLocaleString()} 字节已安全写入并完整复读。\n设备 CRC32：${response.crc32.toString(16).padStart(8, '0').toUpperCase()}\n${safetyNote}`;
+      updateOtaControls();
+    } catch (error) {
+      otaStatus.textContent = `OTA v2 失败：${error.message}\n正在运行的固件不会被替换。`;
+      if (otaCharacteristic && !otaPending) {
+        try { await otaCommand([OTA_ABORT], 3000); } catch (_) { /* best effort */ }
+      }
+    } finally {
+      setConnected(!!characteristic);
+    }
+  });
+
+  otaPowerConfirm.addEventListener('change', updateOtaControls);
+
+  otaArm.addEventListener('click', async () => {
+    if (!otaCandidate || !otaPowerConfirm.checked) return;
+    otaArm.disabled = true;
+    try {
+      const packet = new Uint8Array(9);
+      packet[0] = OTA_ARM_INSTALL;
+      putU32LE(packet, 1, OTA_ARM_CONFIRM);
+      putU32LE(packet, 5, otaCandidate.crc32);
+      otaLastResponse = parseOtaResponse(await otaCommand(packet, 20000), OTA_ARM_INSTALL);
+      if (otaLastResponse.phase !== 5) throw new Error('设备没有进入已授权状态');
+      otaStatus.textContent = `第一步完成：候选版本 ${otaCandidate.version} 已重新完整校验并授权。请再次确认供电稳定，再执行切换。`;
+    } catch (error) {
+      otaStatus.textContent = `授权安装失败：${error.message}`;
+    }
+    updateOtaControls();
+  });
+
+  otaInstall.addEventListener('click', async () => {
+    if (!otaCandidate || !otaPowerConfirm.checked) return;
+    otaInstall.disabled = true;
+    try {
+      const packet = new Uint8Array(9);
+      packet[0] = OTA_INSTALL;
+      putU32LE(packet, 1, OTA_INSTALL_CONFIRM);
+      putU32LE(packet, 5, otaCandidate.crc32);
+      otaLastResponse = parseOtaResponse(await otaCommand(packet, 20000), OTA_INSTALL);
+      if (otaLastResponse.phase !== 6) throw new Error('设备没有排队执行安装');
+      otaStatus.textContent = `安装命令已确认：设备即将切换到候选版本 ${otaCandidate.version}、断开连接并重启。重连后请核对版本与槽位。`;
+    } catch (error) {
+      otaStatus.textContent = `安装切换失败：${error.message}`;
+      updateOtaControls();
+    }
+  });
 
   send.addEventListener('click', async () => {
     try {

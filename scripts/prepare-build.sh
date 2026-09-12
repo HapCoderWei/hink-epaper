@@ -19,5 +19,6 @@ done
 # its independent chmod_all target can otherwise race the first compile.
 chmod -R u+rx "$target/tc32_linux"
 cp -R "$root/firmware/src" "$target/src"
+cp -R "$root/firmware/tools" "$target/tools"
 cp "$root/firmware/makefile" "$target/makefile"
 printf 'Prepared %s\nUpstream cache retained: %s\n' "$target" "$cache"

@@ -24,6 +24,8 @@ TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、三色墨水屏驱
 - [硬件映射、屏幕协议与移植](docs/HARDWARE.md)
 - [编译、测试与烧录](docs/BUILD.md)
 - [BLE OTA 状态与风险审计](docs/OTA_STATUS.md)
+- [OTA v2 里程碑与分阶段实施方案](docs/MILESTONE_OTA_V2.md)
+- [OTA v2 M1 双启动槽实施与新对话交接方案](docs/MILESTONE_OTA_V2_M1.md)
 - `firmware/src/`：当前 B1 应用源码；`firmware/makefile`：构建参数。
 - `tests/`：使用实际显示/GPIO代码的主机桩测试。
 - `site/`：独立网页工具，GitHub Pages 仅部署此目录。
@@ -38,4 +40,6 @@ TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、三色墨水屏驱
 
 仅针对文档中已确认的硬件映射，不保证其他 TLSR8359 价签兼容。烧录会覆盖已有程序，应先备份自己的设备。项目不含任何设备 Flash 备份、工厂固件、个人日志或密钥。
 
-> **OTA 警告：**当前源码虽然暴露了继承的 BLE OTA 服务，但经审计发现固件校验缓冲引用、网页校验顺序、分包长度、掉电恢复和认证均存在问题。不要对唯一或已封装的价签使用 ATC OTA 页面的 `Send Firmware` / `final flash`。目前只有 SWire 写入和回读经过本项目验证；详见 [OTA 风险审计](docs/OTA_STATUS.md)。
+> **OTA 警告：**已发布 B1 固件继承的旧 ATC OTA 仍不安全，禁止使用 ATC 页面的 `Send Firmware` / `final flash`。本项目 OTA v2 已完成可救援测试板上的 A→B→A 无线升级，但在 M2 断电回滚和 M3 身份认证完成前仍属于实验能力：正常升级可以不连接烧录器，但设备必须保持可重新接入 SWire 救援。详见 [OTA 状态与风险](docs/OTA_STATUS.md)。
+
+> **OTA v2 开发状态：**M0 与 M1-A 至 M1-D 的 A→B→A 往返安装已在可由 SWire 救援的测试价签上通过。安装使用 CRC 绑定的两步确认，先验证并启用候选槽，再退役旧槽；设备已从 A/v2 切换到 B/v3，再回到 A/v4，两次 SWire 独立回读都确认除此两个启动字节外没有额外变化。v4 显示确认与待机功耗回归完成后即可关闭 M1；分阶段放行条件见 [OTA v2 里程碑](docs/MILESTONE_OTA_V2.md)。

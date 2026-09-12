@@ -16,6 +16,11 @@ TEL_PATH := ./
 
 PROJECT_NAME := ATC_HINK_E0213A162_BLE
 
+# HINK OTA v2 M1 manifest fields. Use a distinct monotonically increasing
+# integer for candidate builds that must be distinguishable on a device.
+HINK_BOARD_ID ?= 0x213a
+HINK_FW_VERSION ?= 1
+
 # Use separate output directories for each diagnostic to avoid stale objects.
 # Keep this option separate from GCC_FLAGS so the normal SDK flags survive.
 DIAG_ADV_UNITS ?= 1600
@@ -59,6 +64,7 @@ INCLUDE_PATHS := -I$(TEL_PATH)/components -I$(PROJECT_PATH)
 
 GCC_FLAGS += $(TEL_CHIP)
 GCC_FLAGS += -DHINK_DIAG_ADV_UNITS=$(DIAG_ADV_UNITS)
+GCC_FLAGS += -DHINK_FW_VERSION=$(HINK_FW_VERSION)
 
 LS_FLAGS := $(PROJECT_PATH_STATIC)/boot.link
 
@@ -83,6 +89,7 @@ endif
 LST_FILE := $(OUT_PATH)/$(PROJECT_NAME).lst
 BIN_FILE := $(OUT_PATH)/../$(PROJECT_NAME).bin
 ELF_FILE := $(OUT_PATH)/$(PROJECT_NAME).elf
+MANIFEST_TOOL := $(TEL_PATH)/tools/ota_manifest.py
 
 # All Target
 all: chmod_all pre-build main-build
@@ -102,10 +109,12 @@ $(LST_FILE): $(ELF_FILE)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-$(BIN_FILE): $(ELF_FILE)
+$(BIN_FILE): $(ELF_FILE) $(MANIFEST_TOOL)
 	@echo 'Create Flash image (binary format)'
 	@$(TC32_COMPILER_PATH)tc32-elf-objcopy -v -O binary $(ELF_FILE)  $(BIN_FILE)
 	@python3 $(TEL_PATH)/make/tl_firmware_tools.py add_crc $(BIN_FILE)
+	@python3 $(MANIFEST_TOOL) append $(BIN_FILE) --board $(HINK_BOARD_ID) --version $(HINK_FW_VERSION)
+	@python3 $(MANIFEST_TOOL) verify $(BIN_FILE) --board $(HINK_BOARD_ID)
 	@echo 'Finished building: $@'
 	@echo ' '
 

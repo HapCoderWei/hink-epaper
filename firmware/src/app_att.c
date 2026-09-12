@@ -75,6 +75,9 @@ static u8 tempValueInCCC[2];
 RAM u8 my_tempVal[2] 	= {0};
 
 /////////////////////////////////////////////////////////
+/* HINK OTA v2 keeps the inherited 16-bit UUIDs for discovery compatibility,
+ * but the command protocol is new. Legacy ATC erase/copy commands are not
+ * accepted by firmware/src/ota.c. */
 static const  u16 my_OtaServiceUUID				= 0x221f;
 static const  u16 my_OtaUUID			    = 0x331f;
 static u8 my_OtaData = 0x00;

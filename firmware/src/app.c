@@ -10,6 +10,7 @@
 #include "flash.h"
 #include "epd.h"
 #include "epd_spi.h"
+#include "ota.h"
 
 // Settings
 extern settings_struct settings;
@@ -35,6 +36,9 @@ _attribute_ram_code_ void user_init_deepRetn(void)
 _attribute_ram_code_ void main_loop(void)
 {
     blt_sdk_main_loop();
+    /* INSTALL first returns its GATT response. The actual marker switch runs
+     * later from this loop, after a short radio-safe delay. */
+    ota_v2_process();
 
     if (epd_state_handler())
     {

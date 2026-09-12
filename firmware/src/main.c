@@ -2,6 +2,7 @@
 #include "tl_common.h"
 #include "drivers.h"
 #include "stack/ble/ble.h"
+#include "stack/ble/service/ble_ll_ota.h"
 #include "vendor/common/user_config.h"
 #include "drivers/8258/gpio_8258.h"
 #include "app_config.h"
@@ -26,6 +27,9 @@ _attribute_ram_code_ __attribute__((optimize("-Os"))) void irq_handler(void)
 _attribute_ram_code_ int main (void)    //must run in ramcode
 {
 	blc_pm_select_internal_32k_crystal();
+	/* Configure two 124 KiB boot slots before the SDK selects the inactive
+	 * destination and exposes it through ota_program_offset. */
+	bls_ota_set_fwSize_and_fwBootAddr(124, 0x20000);
 	cpu_wakeup_init();
 	int deepRetWakeUp = pm_is_MCU_deepRetentionWakeup();  //MCU deep retention wakeUp
 	rf_drv_init(RF_MODE_BLE_1M);
