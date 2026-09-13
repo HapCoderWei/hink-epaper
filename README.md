@@ -26,6 +26,7 @@ TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、三色墨水屏驱
 - [BLE OTA 状态与风险审计](docs/OTA_STATUS.md)
 - [OTA v2 里程碑与分阶段实施方案](docs/MILESTONE_OTA_V2.md)
 - [OTA v2 M1 双启动槽实施与新对话交接方案](docs/MILESTONE_OTA_V2_M1.md)
+- [口袋先知 Rand/0 调研与 HINK 对照基线](docs/POCKET_PROPHET_RESEARCH.md)
 - `firmware/src/`：当前 B1 应用源码；`firmware/makefile`：构建参数。
 - `tests/`：使用实际显示/GPIO代码的主机桩测试。
 - `site/`：独立网页工具，GitHub Pages 仅部署此目录。
