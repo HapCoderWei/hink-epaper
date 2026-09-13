@@ -87,6 +87,19 @@
     .connection-dot { width: 8px; height: 8px; border-radius: 50%; background: #7e898d; box-shadow: 0 0 0 4px rgba(126,137,141,.12); }
     .connection-pill[data-state="connected"] { color: #d7fffb; border-color: rgba(49,190,181,.45); background: rgba(8,126,122,.18); }
     .connection-pill[data-state="connected"] .connection-dot { background: #4ad0c7; box-shadow: 0 0 0 4px rgba(74,208,199,.14); }
+    .disconnect-btn {
+      min-height: 32px;
+      padding: 6px 12px;
+      color: #aeb8ba;
+      border: 1px solid #3c4549;
+      border-radius: 8px;
+      background: transparent;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color .18s ease, border-color .18s ease;
+    }
+    .disconnect-btn:hover { color: #dce2e3; border-color: #657074; }
     main { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 36px 0 72px; }
     .intro { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 24px; }
     .eyebrow { margin: 0 0 8px; color: var(--red); font: 700 11px/1 Menlo, monospace; letter-spacing: .13em; text-transform: uppercase; }
@@ -294,6 +307,7 @@
         <i class="connection-dot" aria-hidden="true"></i>
         <span id="connection-label">未连接</span>
       </span>
+      <button id="disconnect" class="disconnect-btn" hidden aria-label="断开连接">断开</button>
     </div>
   </header>
 
@@ -372,7 +386,7 @@
                   <label class="field-label" for="fit">画面适配</label>
                   <select id="fit">
                     <option value="cover">铺满并裁切</option>
-                    <option value="contain">完整显示</option>
+                    <option value="contain" selected>完整显示</option>
                   </select>
                 </div>
                 <div class="field">
@@ -499,6 +513,7 @@
   const connectAll = document.querySelector('#connect-all');
   const connectionPill = document.querySelector('#connection-pill');
   const connectionLabel = document.querySelector('#connection-label');
+  const disconnectBtn = document.querySelector('#disconnect');
   const send = document.querySelector('#send');
   const test = document.querySelector('#test');
   const clear = document.querySelector('#clear');
@@ -519,6 +534,7 @@
   const deviceJournal = document.querySelector('#device-journal');
   let sourceImage = null;
   let rotation = 0;
+  let device = null;
   let characteristic = null;
   let otaCharacteristic = null;
   let otaSupported = false;
@@ -529,9 +545,43 @@
   let otaInfo = null;
   let otaCandidate = null;
   let otaLastResponse = null;
+  const IDLE_TIMEOUT = 60000;
+  let idleTimer = null;
+  let lastActivity = 0;
 
   function setStatus(text) { status.textContent = text; }
   function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  function resetIdleTimer() {
+    lastActivity = Date.now();
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(checkIdle, IDLE_TIMEOUT);
+  }
+
+  function checkIdle() {
+    if (!characteristic) return;
+    const elapsed = Date.now() - lastActivity;
+    if (elapsed >= IDLE_TIMEOUT) {
+      disconnectDevice();
+      setStatus('已自动断开：超过 1 分钟无操作。');
+    } else {
+      idleTimer = setTimeout(checkIdle, IDLE_TIMEOUT - elapsed);
+    }
+  }
+
+  function startIdleTimer() {
+    lastActivity = Date.now();
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(checkIdle, IDLE_TIMEOUT);
+  }
+
+  function stopIdleTimer() {
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+  }
+
   function setConnected(connected, deviceName = null) {
     send.disabled = !connected || !sourceImage;
     test.disabled = clear.disabled = !connected;
@@ -539,6 +589,12 @@
     connect.textContent = connected ? '价签已连接' : '连接 HINK 价签';
     connectionPill.dataset.state = connected ? 'connected' : 'disconnected';
     connectionLabel.textContent = connected ? (deviceName || '已连接') : '未连接';
+    disconnectBtn.hidden = !connected;
+    if (connected) {
+      startIdleTimer();
+    } else {
+      stopIdleTimer();
+    }
     updateOtaControls();
   }
 
@@ -841,8 +897,9 @@
             ],
             optionalServices: [SERVICE, OTA_SERVICE]
           };
-      const device = await navigator.bluetooth.requestDevice(request);
+      device = await navigator.bluetooth.requestDevice(request);
       device.addEventListener('gattserverdisconnected', () => {
+        device = null;
         characteristic = null;
         otaCharacteristic = null;
         otaSupported = false;
@@ -867,10 +924,11 @@
       await probeOta(server);
       setStatus(`已连接：${device.name || 'HINK 价签'}`);
     } catch (error) {
+      device = null;
       setConnected(false);
       resetDeviceData();
       setStatus(error.name === 'NotFoundError'
-        ? '没有选中设备。如果列表为空，请确认价签供电后使用“扫描全部 BLE 设备”。'
+        ? '没有选中设备。如果列表为空，请确认价签供电后使用”扫描全部 BLE 设备”。'
         : `连接失败：${error.message}`);
     } finally {
       connect.disabled = !!characteristic;
@@ -878,8 +936,27 @@
     }
   }
 
+  function disconnectDevice() {
+    // 主动断开 GATT 连接
+    if (device && device.gatt.connected) {
+      device.gatt.disconnect();
+    }
+    // 清理状态（gattserverdisconnected 事件会处理大部分清理，这里做兜底）
+    characteristic = null;
+    otaCharacteristic = null;
+    otaSupported = false;
+    otaMilestone = 0;
+    otaCapabilities = 0;
+    otaInfo = otaCandidate = otaLastResponse = null;
+    resetDeviceData();
+    setConnected(false);
+    setStatus('已断开连接。可以连接其他价签。');
+    otaStatus.textContent = '已断开连接。';
+  }
+
   connect.addEventListener('click', () => connectDevice(false));
   connectAll.addEventListener('click', () => connectDevice(true));
+  disconnectBtn.addEventListener('click', disconnectDevice);
 
   firmware.addEventListener('change', async () => {
     otaProgress.value = 0;
@@ -902,6 +979,7 @@
   otaStage.addEventListener('click', async () => {
     const selected = firmware.files[0];
     if (!selected || !otaSupported) return;
+    resetIdleTimer();
     otaStage.disabled = true;
     send.disabled = test.disabled = clear.disabled = true;
     otaProgress.value = 0;
@@ -967,6 +1045,7 @@
 
   otaArm.addEventListener('click', async () => {
     if (!otaCandidate || !otaPowerConfirm.checked) return;
+    resetIdleTimer();
     otaArm.disabled = true;
     try {
       const packet = new Uint8Array(9);
@@ -984,6 +1063,7 @@
 
   otaInstall.addEventListener('click', async () => {
     if (!otaCandidate || !otaPowerConfirm.checked) return;
+    resetIdleTimer();
     otaInstall.disabled = true;
     try {
       const packet = new Uint8Array(9);
@@ -1001,6 +1081,7 @@
 
   send.addEventListener('click', async () => {
     try {
+      resetIdleTimer();
       send.disabled = test.disabled = clear.disabled = true;
       const bytes = buildPlanes();
       progress.value = 0; setStatus('正在上传 8000 字节黑/红双平面…');
@@ -1020,12 +1101,12 @@
   });
 
   test.addEventListener('click', async () => {
-    try { await write([0x05]); progress.value = 100; setStatus('已触发固件内置测试图，等待全刷完成。'); }
+    try { resetIdleTimer(); await write([0x05]); progress.value = 100; setStatus('已触发固件内置测试图，等待全刷完成。'); }
     catch (error) { setStatus(`测试失败：${error.message}`); }
   });
 
   clear.addEventListener('click', async () => {
-    try { await write([0x00, 0xff]); await write([0x01]); setStatus('已发送全白画面，等待全刷完成。'); }
+    try { resetIdleTimer(); await write([0x00, 0xff]); await write([0x01]); setStatus('已发送全白画面，等待全刷完成。'); }
     catch (error) { setStatus(`清屏失败：${error.message}`); }
   });
 
