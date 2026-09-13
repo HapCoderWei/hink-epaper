@@ -6,7 +6,14 @@ TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、三色墨水屏驱
 
 使用 Mac Chrome 打开 HTTPS 页面，开启蓝牙，点击连接 HINK，选择图片并发送。网页是纯前端，图片在浏览器内处理，通过本机蓝牙直达附近价签；不需要业务后端。完整刷新后关闭页面断开连接，避免持续连接耗电。详见 [网页使用说明](docs/WEB.md)。
 
-## 当前里程碑：v0.1.0-b1
+## 当前开发里程碑：OTA v2 M2（已完成）
+
+- OTA v2 的 M0 上传校验、M1 双槽安装和 M2 断电恢复，已于 2026-09-13 按个人项目范围完成。
+- 当前真机从槽 A 运行 v19；网页可以上传候选固件、完成两步安装并重启，新固件异常时可在受限条件下自动回滚。
+- 日常无线升级不需要连接烧录器，但仍应保留 SWire 焊盘和备份作为极端故障救援手段。
+- M3 身份认证/签名是可选的下一阶段，目前尚未实现；不要在不可信的 BLE 环境开放升级。
+
+### 已发布基线：v0.1.0-b1
 
 - 真机传图、黑白红全屏刷新正常，固件通过 SWire 烧录并逐字节回读匹配。
 - 3.0 V 供电、20 mA 档：未连接待机约 **42 µA**，连接无传图约 **765 µA**，刷新后关闭网页 60 秒回到约 **42 µA**。
@@ -26,6 +33,8 @@ TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、三色墨水屏驱
 - [BLE OTA 状态与风险审计](docs/OTA_STATUS.md)
 - [OTA v2 里程碑与分阶段实施方案](docs/MILESTONE_OTA_V2.md)
 - [OTA v2 M1 双启动槽实施与新对话交接方案](docs/MILESTONE_OTA_V2_M1.md)
+- [OTA v2 M2 断电恢复实施方案与完成记录](docs/MILESTONE_OTA_V2_M2.md)
+- [原厂固件备份与逆向记录](docs/FACTORY_FIRMWARE_REVERSE_ENGINEERING.md)
 - [口袋先知 Rand/0 调研与 HINK 对照基线](docs/POCKET_PROPHET_RESEARCH.md)
 - `firmware/src/`：当前 B1 应用源码；`firmware/makefile`：构建参数。
 - `tests/`：使用实际显示/GPIO代码的主机桩测试。
@@ -41,6 +50,6 @@ TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、三色墨水屏驱
 
 仅针对文档中已确认的硬件映射，不保证其他 TLSR8359 价签兼容。烧录会覆盖已有程序，应先备份自己的设备。项目不含任何设备 Flash 备份、工厂固件、个人日志或密钥。
 
-> **OTA 警告：**已发布 B1 固件继承的旧 ATC OTA 仍不安全，禁止使用 ATC 页面的 `Send Firmware` / `final flash`。本项目 OTA v2 已完成可救援测试板上的 A→B→A 无线升级，但在 M2 断电回滚和 M3 身份认证完成前仍属于实验能力：正常升级可以不连接烧录器，但设备必须保持可重新接入 SWire 救援。详见 [OTA 状态与风险](docs/OTA_STATUS.md)。
+> **OTA 版本区别：**已发布的 B1 和 `v0.1.1-name` 固件继承了不安全的旧 ATC OTA，禁止使用 ATC 页面的 `Send Firmware` / `final flash`。只有已经通过 SWire 写入本项目 OTA v2 M2 固件的价签，才能使用当前网页的 OTA v2 功能。详见 [OTA 状态与风险](docs/OTA_STATUS.md)。
 
-> **OTA v2 开发状态：**M0 与 M1-A 至 M1-D 的 A→B→A 往返安装已在可由 SWire 救援的测试价签上通过。安装使用 CRC 绑定的两步确认，先验证并启用候选槽，再退役旧槽；设备已从 A/v2 切换到 B/v3，再回到 A/v4，两次 SWire 独立回读都确认除此两个启动字节外没有额外变化。v4 显示确认与待机功耗回归完成后即可关闭 M1；分阶段放行条件见 [OTA v2 里程碑](docs/MILESTONE_OTA_V2.md)。
+> **OTA v2 开发状态：**M0、M1 和 M2 均已按个人项目验收范围完成。安装采用 CRC 绑定的两步确认、双启动槽和追加式恢复日志；真机已验证安装断电继续、候选连续启动失败自动回滚，以及回滚过程中断电后继续恢复。当前设备为 A/v19，三色刷新正常。正常 OTA 不需要连接烧录器，但没有独立不可变 bootloader，极端损坏仍可能需要 SWire；M3 身份认证/签名尚未实现。分阶段证据见 [OTA v2 里程碑](docs/MILESTONE_OTA_V2.md)。
