@@ -41,6 +41,17 @@
 #define HINK_OTA_SW_RESET_POINT       0U
 #endif
 
+/* Physical power-cut diagnostics stop forever at a persisted checkpoint so
+ * the operator can remove target power without racing normal execution. They
+ * are mutually exclusive with the automatic hostile-reset diagnostics. */
+#ifndef HINK_OTA_PHYSICAL_CUT_POINT
+#define HINK_OTA_PHYSICAL_CUT_POINT    0U
+#endif
+
+#if HINK_OTA_PHYSICAL_CUT_POINT != 0 && HINK_OTA_SW_RESET_POINT != 0
+#error "physical power-cut and software-reset diagnostics are mutually exclusive"
+#endif
+
 #ifndef HINK_FW_VERSION
 #define HINK_FW_VERSION              0U
 #endif
@@ -667,6 +678,15 @@ static _attribute_ram_code_ void ota_v2_run_rollback(void)
     }
 #endif
 
+#if HINK_OTA_PHYSICAL_CUT_POINT == 6
+    if (rollback_intent_written)
+    {
+        while (1)
+        {
+        }
+    }
+#endif
+
     flash_erase_sector(source_base);
     for (offset = 0U; offset < OTA_RECOVERY_BACKUP_SIZE; offset += chunk)
     {
@@ -797,6 +817,12 @@ _attribute_ram_code_ void ota_v2_process(void)
     OTA_V2_REBOOT();
 #endif
 
+#if HINK_OTA_PHYSICAL_CUT_POINT == 2
+    while (1)
+    {
+    }
+#endif
+
     /* The candidate becomes bootable first. The running image is retired only
      * after the complete four-byte target marker was read back exactly. */
     if (!ota_v2_write_and_verify_marker(
@@ -830,6 +856,12 @@ _attribute_ram_code_ void ota_v2_process(void)
 
 #if HINK_OTA_SW_RESET_POINT == 3
     OTA_V2_REBOOT();
+#endif
+
+#if HINK_OTA_PHYSICAL_CUT_POINT == 3
+    while (1)
+    {
+    }
 #endif
 
     OTA_V2_REBOOT();

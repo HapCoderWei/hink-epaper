@@ -398,6 +398,50 @@ async def install_staged(name_prefix, address, firmware):
     )
 
 
+async def prepare_install_power_cut(name_prefix, address, firmware):
+    """Start an install whose diagnostic source image waits after INSTALL_INTENT."""
+    image, candidate_version = load_manifested_image(firmware)
+    image_crc = zlib.crc32(image) & 0xFFFFFFFF
+    name, device = await resolve_tag(name_prefix, address)
+    print(f"DEVICE={name}")
+
+    async with OtaConnection(device) as connection:
+        info = await connection.info()
+        if not (info["capabilities"] & 1):
+            raise RuntimeError(f"device does not advertise M1 install capability: {info}")
+        if (
+            info["phase"] != PHASE_VERIFIED
+            or info["image_size"] != len(image)
+            or info["crc32"] != image_crc
+        ):
+            raise RuntimeError(f"staged candidate does not match the selected file: {info}")
+        print(
+            f"INSTALL_FROM_SLOT={info['current_slot']} "
+            f"INSTALL_TO_SLOT={info['target_slot']} "
+            f"CURRENT_VERSION={info['firmware_version']} "
+            f"CANDIDATE_VERSION={candidate_version}"
+        )
+
+        arm = bytes((CMD_ARM_INSTALL,)) + struct.pack("<II", ARM_CONFIRM, image_crc)
+        status = await connection.command(arm, timeout=20.0)
+        if status["status"] != STATUS_OK or status["phase"] != PHASE_ARMED:
+            raise RuntimeError(f"ARM_INSTALL failed: {status}")
+        print("PASS ARM_INSTALL revalidated the candidate")
+
+        install = bytes((CMD_INSTALL,)) + struct.pack(
+            "<II", INSTALL_CONFIRM, image_crc
+        )
+        status = await connection.command(install, timeout=20.0)
+        if status["status"] != STATUS_OK or status["phase"] != PHASE_INSTALL_PENDING:
+            raise RuntimeError(f"INSTALL was not queued: {status}")
+
+        # The diagnostic source waits forever after the journaled intent. Give
+        # its deferred installer enough time to reach that checkpoint before
+        # telling the operator it is safe to remove target power.
+        await asyncio.sleep(1.0)
+        print("READY_FOR_POWER_CUT phase=install-intent")
+
+
 async def prepare_power_cut(name_prefix, address, phase):
     """Leave the staging session at a known boundary before target power loss."""
     name, device = await resolve_tag(name_prefix, address)
@@ -493,7 +537,7 @@ def main():
     )
     parser.add_argument(
         "--firmware",
-        help="manifested firmware used by stage-verify or explicit install-staged",
+        help="manifested firmware used by staging or explicit install actions",
     )
     parser.add_argument(
         "--action",
@@ -505,6 +549,7 @@ def main():
             "display-test",
             "stage-verify",
             "install-staged",
+            "prepare-power-install",
             "info",
         ),
         default="disconnect-test",
@@ -513,7 +558,7 @@ def main():
     parser.add_argument(
         "--allow-install",
         action="store_true",
-        help="required safety gate for the explicit install-staged action",
+        help="required safety gate for explicit install actions",
     )
     args = parser.parse_args()
     if args.action == "disconnect-test":
@@ -536,6 +581,16 @@ def main():
         if not args.firmware:
             parser.error("--firmware is required for --action install-staged")
         coroutine = install_staged(args.name_prefix, args.address, args.firmware)
+    elif args.action == "prepare-power-install":
+        if not args.allow_install:
+            parser.error(
+                "--allow-install is required for --action prepare-power-install"
+            )
+        if not args.firmware:
+            parser.error("--firmware is required for --action prepare-power-install")
+        coroutine = prepare_install_power_cut(
+            args.name_prefix, args.address, args.firmware
+        )
     else:
         coroutine = display_test_pattern(args.name_prefix, args.address)
     asyncio.run(coroutine)
