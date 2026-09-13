@@ -6,3 +6,4 @@ int custom_otaWrite(void *p);
 void ota_v2_process(void);
 void ota_v2_recovery_init(void);
 void ota_v2_recovery_runtime_ready(void);
+uint8_t ota_v2_recovery_requires_awake(void);

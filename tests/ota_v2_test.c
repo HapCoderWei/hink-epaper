@@ -454,6 +454,53 @@ static void test_recovery_write_guards(const uint8_t *image)
     assert(reboot_count == 0);
 }
 
+static void test_resume_install_after_intent(const uint8_t *image)
+{
+    ota_recovery_record_t record;
+    uint8_t masked_image[TEST_IMAGE_SIZE];
+    uint8_t encoded[OTA_RECOVERY_RECORD_SIZE];
+    uint32_t candidate_crc;
+    uint32_t backup_crc;
+
+    reset_environment(OTA_V2_SLOT_B_START);
+    memcpy(masked_image, image, sizeof(masked_image));
+    candidate_crc = crc32(image, TEST_IMAGE_SIZE);
+    masked_image[OTA_RECOVERY_BOOT_MARKER_OFFSET] = 0xFFU;
+    memcpy(&fake_flash[OTA_V2_SLOT_B_START], masked_image,
+           sizeof(masked_image));
+    ota_recovery_make_masked_backup(
+        &fake_flash[OTA_V2_SLOT_A_START],
+        &fake_flash[OTA_RECOVERY_BACKUP_ADDRESS],
+        OTA_RECOVERY_BACKUP_SIZE);
+    backup_crc = crc32(&fake_flash[OTA_RECOVERY_BACKUP_ADDRESS],
+                       OTA_RECOVERY_BACKUP_SIZE);
+
+    memset(&record, 0, sizeof(record));
+    record.state = OTA_RECOVERY_STATE_INSTALL_INTENT;
+    record.source_slot = OTA_RECOVERY_SLOT_A;
+    record.target_slot = OTA_RECOVERY_SLOT_B;
+    record.sequence = 1U;
+    record.source_version = HINK_FW_VERSION;
+    record.target_version = 1U;
+    record.candidate_crc32 = candidate_crc;
+    record.backup_crc32 = backup_crc;
+    ota_recovery_encode(&record, encoded);
+    memcpy(&fake_flash[OTA_RECOVERY_JOURNAL_ADDRESS], encoded,
+           sizeof(encoded));
+
+    ota_v2_reset_session();
+    ota_v2_recovery_init();
+    assert(ota_v2_recovery_action == OTA_RECOVERY_ACTION_RESUME_INSTALL);
+    assert(ota_v2_session.layout_valid == 1U);
+    assert(ota_v2_session.image_size == TEST_IMAGE_SIZE);
+    ota_v2_process();
+    assert(reboot_count == 1);
+    assert(memcmp(&fake_flash[OTA_V2_SLOT_B_START + 8U], "KNLT", 4U) == 0);
+    assert(fake_flash[OTA_V2_SLOT_A_START + 8U] == 0x00U);
+    assert(ota_v2_recovery_scan.latest.state ==
+           OTA_RECOVERY_STATE_MARKERS_SWITCHED);
+}
+
 static ota_recovery_action_t cold_boot_action_after_cut(void)
 {
     uint8_t a_valid =
@@ -570,15 +617,20 @@ static void test_trial_confirmation(const uint8_t *image)
     assert(cold_boot_action_after_cut() ==
            OTA_RECOVERY_ACTION_START_TRIAL);
     assert(ota_v2_trial_active == 1U);
+    assert(ota_v2_recovery_requires_awake() == 1U);
     assert(watchdog_started == 1);
     ota_v2_recovery_runtime_ready();
     fake_clock += OTA_V2_TRIAL_CONFIRM_US + 1U;
     ota_v2_process();
     assert(ota_v2_trial_active == 0U);
+    assert(ota_v2_recovery_requires_awake() == 0U);
     assert(watchdog_cleared == 1);
     assert(watchdog_stopped == 1);
     assert(ota_v2_recovery_state == OTA_RECOVERY_STATE_CONFIRMED);
     assert(ota_v2_recovery_action == OTA_RECOVERY_ACTION_NORMAL);
+    assert(ota_v2_recovery_scan.valid_records == 4U);
+    assert(ota_v2_recovery_scan.latest.state ==
+           OTA_RECOVERY_STATE_CONFIRMED);
     ota_recovery_scan_journal(
         &fake_flash[OTA_RECOVERY_JOURNAL_ADDRESS],
         OTA_RECOVERY_JOURNAL_SIZE, &scan);
@@ -978,6 +1030,7 @@ int main(void)
     assert(last_notification[21] == 0U && last_notification[22] == 1U);
 
     test_install_guards_and_success(image);
+    test_resume_install_after_intent(image);
     test_install_revalidation(image);
     test_recovery_write_guards(image);
     test_backup_erase_power_cuts(image);

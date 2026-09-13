@@ -34,6 +34,13 @@
 #define OTA_V2_TRIAL_WATCHDOG_MS     12000U
 #define OTA_V2_MAX_TRIAL_ATTEMPTS    3U
 
+/* Hostile-reset diagnostics are opt-in and must never be present in a normal
+ * release image. Values select a persisted checkpoint after which the image
+ * reboots once; the journal state prevents repeating the same injection. */
+#ifndef HINK_OTA_SW_RESET_POINT
+#define HINK_OTA_SW_RESET_POINT       0U
+#endif
+
 #ifndef HINK_FW_VERSION
 #define HINK_FW_VERSION              0U
 #endif
@@ -116,6 +123,10 @@ RAM uint8_t ota_v2_rollback_pending;
 RAM uint32_t ota_v2_trial_started;
 
 static uint8_t ota_v2_get_slots(uint8_t *current_slot, uint8_t *target_slot);
+static void ota_v2_reset_session(void);
+static uint8_t ota_v2_validate_flash_image(void);
+static uint8_t ota_v2_rebuild_session_from_record(void);
+static _attribute_ram_code_ void ota_v2_resume_switch(void);
 static _attribute_ram_code_ uint8_t ota_v2_append_existing_recovery_record(
     uint8_t state);
 
@@ -257,6 +268,13 @@ void ota_v2_recovery_init(void)
                                 ? ota_v2_recovery_scan.latest.state
                                 : 0U;
     ota_v2_recovery_action = (uint8_t)ota_recovery_decide(&observation);
+    if ((ota_v2_recovery_action == OTA_RECOVERY_ACTION_RESUME_INSTALL ||
+         ota_v2_recovery_action == OTA_RECOVERY_ACTION_RESUME_SWITCH) &&
+        !ota_v2_rebuild_session_from_record())
+    {
+        ota_v2_recovery_action = OTA_RECOVERY_ACTION_SWIRE_RESCUE;
+        return;
+    }
     ota_v2_trial_active = 0U;
     ota_v2_trial_runtime_ready = 0U;
     ota_v2_rollback_pending = 0U;
@@ -288,6 +306,14 @@ void ota_v2_recovery_runtime_ready(void)
         ota_v2_trial_started = clock_time();
         ota_v2_trial_runtime_ready = 1U;
     }
+}
+
+_attribute_ram_code_ uint8_t ota_v2_recovery_requires_awake(void)
+{
+    /* The TLSR8258 timer watchdog uses the system clock, which is paused by
+     * BLE suspend. Keep the MCU awake only for the bounded trial window so a
+     * stalled candidate is guaranteed to reach the watchdog deadline. */
+    return ota_v2_trial_active;
 }
 
 static void ota_v2_reset_session(void)
@@ -437,6 +463,22 @@ static _attribute_ram_code_ uint8_t ota_v2_store_recovery_record(
         return 0U;
     }
 
+    /* Keep the status snapshot current immediately after a verified append.
+     * Every append rescans before choosing its Flash address, but INFO may be
+     * served before the next boot/rescan (notably just after trial confirm). */
+    ota_v2_recovery_scan.valid_records++;
+    if (record->state == OTA_RECOVERY_STATE_INSTALL_INTENT ||
+        record->state == OTA_RECOVERY_STATE_MARKERS_SWITCHED)
+    {
+        ota_v2_recovery_scan.trial_attempts = 0U;
+    }
+    else if (record->state == OTA_RECOVERY_STATE_TRIAL_ATTEMPT &&
+             ota_v2_recovery_scan.trial_attempts != 0xFFU)
+    {
+        ota_v2_recovery_scan.trial_attempts++;
+    }
+    ota_v2_recovery_scan.latest = verified;
+    ota_v2_recovery_scan.found = 1U;
     ota_v2_recovery_state = record->state;
     return 1U;
 }
@@ -502,6 +544,50 @@ static _attribute_ram_code_ void ota_v2_reboot(void)
 #define OTA_V2_REBOOT() ota_v2_reboot()
 #endif
 
+static _attribute_ram_code_ void ota_v2_resume_switch(void)
+{
+    uint32_t source_base;
+    uint32_t target_base;
+    uint8_t irq_state;
+
+    source_base = ota_v2_recovery_scan.latest.source_slot ==
+                          OTA_RECOVERY_SLOT_A
+                      ? OTA_V2_SLOT_A_START
+                      : OTA_V2_SLOT_B_START;
+    target_base = ota_v2_recovery_scan.latest.target_slot ==
+                          OTA_RECOVERY_SLOT_A
+                      ? OTA_V2_SLOT_A_START
+                      : OTA_V2_SLOT_B_START;
+    irq_state = irq_disable();
+
+    if (!ota_v2_boot_marker_valid(target_base) &&
+        !ota_v2_write_and_verify_marker(target_base + OTA_V2_BOOT_MARKER_OFFSET,
+                                        ota_v2_target_marker))
+    {
+        ota_v2_recovery_action = OTA_RECOVERY_ACTION_SWIRE_RESCUE;
+        irq_restore(irq_state);
+        return;
+    }
+    if (ota_v2_boot_marker_valid(source_base) &&
+        !ota_v2_write_and_verify_marker(source_base + OTA_V2_BOOT_MARKER_OFFSET,
+                                        ota_v2_retired_marker))
+    {
+        ota_v2_recovery_action = OTA_RECOVERY_ACTION_SWIRE_RESCUE;
+        irq_restore(irq_state);
+        return;
+    }
+    if (!ota_v2_append_existing_recovery_record(
+            OTA_RECOVERY_STATE_MARKERS_SWITCHED))
+    {
+        ota_v2_recovery_action = OTA_RECOVERY_ACTION_SWIRE_RESCUE;
+        irq_restore(irq_state);
+        return;
+    }
+
+    irq_restore(irq_state);
+    OTA_V2_REBOOT();
+}
+
 static _attribute_ram_code_ void ota_v2_run_rollback(void)
 {
     uint32_t source_base;
@@ -509,6 +595,8 @@ static _attribute_ram_code_ void ota_v2_run_rollback(void)
     uint32_t offset;
     uint32_t chunk;
     uint8_t irq_state;
+    uint8_t rollback_intent_written = 0U;
+    (void)rollback_intent_written;
 
     ota_v2_rollback_pending = 0U;
     ota_v2_scan_recovery_journal();
@@ -560,14 +648,24 @@ static _attribute_ram_code_ void ota_v2_run_rollback(void)
     }
 
     if (ota_v2_recovery_scan.latest.state !=
-            OTA_RECOVERY_STATE_ROLLBACK_INTENT &&
-        !ota_v2_append_existing_recovery_record(
-            OTA_RECOVERY_STATE_ROLLBACK_INTENT))
+        OTA_RECOVERY_STATE_ROLLBACK_INTENT)
     {
-        ota_v2_recovery_action = OTA_RECOVERY_ACTION_SWIRE_RESCUE;
-        irq_restore(irq_state);
-        return;
+        if (!ota_v2_append_existing_recovery_record(
+                OTA_RECOVERY_STATE_ROLLBACK_INTENT))
+        {
+            ota_v2_recovery_action = OTA_RECOVERY_ACTION_SWIRE_RESCUE;
+            irq_restore(irq_state);
+            return;
+        }
+        rollback_intent_written = 1U;
     }
+
+#if HINK_OTA_SW_RESET_POINT == 6
+    if (rollback_intent_written)
+    {
+        OTA_V2_REBOOT();
+    }
+#endif
 
     flash_erase_sector(source_base);
     for (offset = 0U; offset < OTA_RECOVERY_BACKUP_SIZE; offset += chunk)
@@ -621,6 +719,13 @@ _attribute_ram_code_ void ota_v2_process(void)
     if (ota_v2_rollback_pending)
     {
         ota_v2_run_rollback();
+        return;
+    }
+
+    if (ota_v2_recovery_action == OTA_RECOVERY_ACTION_RESUME_INSTALL ||
+        ota_v2_recovery_action == OTA_RECOVERY_ACTION_RESUME_SWITCH)
+    {
+        ota_v2_resume_switch();
         return;
     }
 
@@ -688,6 +793,10 @@ _attribute_ram_code_ void ota_v2_process(void)
         return;
     }
 
+#if HINK_OTA_SW_RESET_POINT == 2
+    OTA_V2_REBOOT();
+#endif
+
     /* The candidate becomes bootable first. The running image is retired only
      * after the complete four-byte target marker was read back exactly. */
     if (!ota_v2_write_and_verify_marker(
@@ -719,6 +828,10 @@ _attribute_ram_code_ void ota_v2_process(void)
         return;
     }
 
+#if HINK_OTA_SW_RESET_POINT == 3
+    OTA_V2_REBOOT();
+#endif
+
     OTA_V2_REBOOT();
 }
 
@@ -742,7 +855,8 @@ static uint32_t ota_v2_crc_flash_virtual(uint32_t base, uint32_t length,
             OTA_V2_BOOT_MARKER_OFFSET < offset + chunk)
         {
             uint32_t marker_index = OTA_V2_BOOT_MARKER_OFFSET - offset;
-            if (ota_v2_verify_buffer[marker_index] != 0xFFU)
+            if (ota_v2_verify_buffer[marker_index] != 0xFFU &&
+                ota_v2_verify_buffer[marker_index] != 0x4BU)
             {
                 *boot_marker_masked = 0U;
             }
@@ -814,7 +928,8 @@ static uint8_t ota_v2_validate_flash_image(void)
 
     flash_read_page(ota_v2_session.target_base, 28U, ota_v2_verify_buffer);
     telink_length = ota_v2_read_u32_le(&ota_v2_verify_buffer[OTA_V2_TELINK_LENGTH_OFFSET]);
-    if (ota_v2_verify_buffer[OTA_V2_BOOT_MARKER_OFFSET] != 0xFFU ||
+    if ((ota_v2_verify_buffer[OTA_V2_BOOT_MARKER_OFFSET] != 0xFFU &&
+         ota_v2_verify_buffer[OTA_V2_BOOT_MARKER_OFFSET] != 0x4BU) ||
         ota_v2_verify_buffer[9] != 'N' ||
         ota_v2_verify_buffer[10] != 'L' ||
         ota_v2_verify_buffer[11] != 'T' ||
@@ -835,6 +950,47 @@ static uint8_t ota_v2_validate_flash_image(void)
     }
 
     return OTA_V2_STATUS_OK;
+}
+
+static uint8_t ota_v2_rebuild_session_from_record(void)
+{
+    uint32_t target_base;
+    uint32_t telink_length;
+    uint32_t payload_length;
+    uint32_t image_size;
+
+    target_base = ota_v2_recovery_scan.latest.target_slot ==
+                          OTA_RECOVERY_SLOT_A
+                      ? OTA_V2_SLOT_A_START
+                      : OTA_V2_SLOT_B_START;
+    flash_read_page(target_base + OTA_V2_TELINK_LENGTH_OFFSET, 4U,
+                    ota_v2_verify_buffer);
+    telink_length = ota_v2_read_u32_le(ota_v2_verify_buffer);
+    if (telink_length < 32U || telink_length > OTA_V2_SLOT_SIZE - 28U)
+    {
+        return 0U;
+    }
+    payload_length = telink_length + 4U;
+    image_size = payload_length + OTA_V2_MANIFEST_SIZE;
+    if (image_size > OTA_V2_SLOT_SIZE)
+    {
+        return 0U;
+    }
+
+    ota_v2_reset_session();
+    ota_v2_session.image_size = image_size;
+    ota_v2_session.expected_crc32 =
+        ota_v2_recovery_scan.latest.candidate_crc32;
+    ota_v2_session.target_base = target_base;
+    ota_v2_session.layout_valid = 1U;
+    if (ota_v2_validate_flash_image() != OTA_V2_STATUS_OK ||
+        ota_v2_session.candidate_version !=
+            ota_v2_recovery_scan.latest.target_version)
+    {
+        ota_v2_reset_session();
+        return 0U;
+    }
+    return 1U;
 }
 
 _attribute_ram_code_ int custom_otaWrite(void *p)

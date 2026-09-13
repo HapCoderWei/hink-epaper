@@ -28,6 +28,10 @@ _attribute_ram_code_ void user_init_normal(void)
     epd_prepare_boot_sleep();
     set_adv_data(0, 100, 3000);
     ota_v2_recovery_runtime_ready();
+    if (ota_v2_recovery_requires_awake())
+    {
+        bls_pm_setSuspendMask(SUSPEND_DISABLE);
+    }
 }
 
 _attribute_ram_code_ void user_init_deepRetn(void)
@@ -44,7 +48,13 @@ _attribute_ram_code_ void main_loop(void)
      * later from this loop, after a short radio-safe delay. */
     ota_v2_process();
 
-    if (epd_state_handler())
+    if (ota_v2_recovery_requires_awake())
+    {
+        /* The ordinary timer watchdog does not advance in BLE suspend. A
+         * healthy trial lasts only five seconds, then normal sleep resumes. */
+        bls_pm_setSuspendMask(SUSPEND_DISABLE);
+    }
+    else if (epd_state_handler())
     {
         /* The controller keeps refreshing without MCU intervention.  Ordinary
          * suspend switches off the CPU/RF/high-speed clocks between BLE events
