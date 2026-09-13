@@ -398,7 +398,7 @@ async def install_staged(name_prefix, address, firmware):
     )
 
 
-async def prepare_install_power_cut(name_prefix, address, firmware):
+async def prepare_install_power_cut(name_prefix, address, firmware, checkpoint):
     """Start an install whose diagnostic source image waits after INSTALL_INTENT."""
     image, candidate_version = load_manifested_image(firmware)
     image_crc = zlib.crc32(image) & 0xFFFFFFFF
@@ -439,7 +439,7 @@ async def prepare_install_power_cut(name_prefix, address, firmware):
         # its deferred installer enough time to reach that checkpoint before
         # telling the operator it is safe to remove target power.
         await asyncio.sleep(1.0)
-        print("READY_FOR_POWER_CUT phase=install-intent")
+        print(f"READY_FOR_POWER_CUT phase={checkpoint}")
 
 
 async def prepare_power_cut(name_prefix, address, phase):
@@ -560,6 +560,12 @@ def main():
         action="store_true",
         help="required safety gate for explicit install actions",
     )
+    parser.add_argument(
+        "--power-cut-phase",
+        choices=("install-intent", "markers-switched"),
+        default="install-intent",
+        help="diagnostic checkpoint expected from prepare-power-install",
+    )
     args = parser.parse_args()
     if args.action == "disconnect-test":
         coroutine = run(args.name_prefix, args.address)
@@ -589,7 +595,7 @@ def main():
         if not args.firmware:
             parser.error("--firmware is required for --action prepare-power-install")
         coroutine = prepare_install_power_cut(
-            args.name_prefix, args.address, args.firmware
+            args.name_prefix, args.address, args.firmware, args.power_cut_phase
         )
     else:
         coroutine = display_test_pattern(args.name_prefix, args.address)
