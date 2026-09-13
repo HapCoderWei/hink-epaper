@@ -38,7 +38,7 @@
 <body>
 <main>
   <h1>HINK 2.13 三色价签</h1>
-  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth · 界面 v0.7 OTA v2 M2</p>
+  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth · 界面 v0.8 OTA v2 M2</p>
   <div class="grid">
     <section class="panel screen"><canvas id="preview" width="122" height="250"></canvas></section>
     <section class="panel">
@@ -81,19 +81,20 @@
       <progress id="progress" value="0" max="100"></progress>
       <p id="status">等待连接。</p>
 
-      <details class="ota">
-        <summary>固件升级实验区（OTA v2 M1/M2）</summary>
+      <details class="ota" open>
+        <summary>固件升级（OTA v2 M2）</summary>
         <p class="warning">上传与校验不会安装。支持安装的价签会在校验通过后显示独立的两步安装区；M2 还会显示断电日志状态。正常 OTA 不需要连接烧录器，但极端损坏仍可能需要重新接入 SWire；当前版本没有固件签名，请只在可信环境使用。</p>
         <label for="firmware">选择 HINK 固件（.bin）</label>
         <input id="firmware" type="file" accept=".bin,application/octet-stream" disabled>
         <button id="ota-stage" class="secondary" disabled>上传到暂存区并校验（不安装）</button>
         <progress id="ota-progress" value="0" max="100"></progress>
         <p id="ota-status">连接支持 OTA v2 M0 的测试价签后才能使用。</p>
-        <div id="ota-install-panel" hidden>
+        <div id="ota-install-panel">
+          <p id="ota-install-hint" class="hint">操作顺序：连接价签 → 选择固件 → 上传并校验 → 准备安装 → 安装并重启。</p>
           <p class="warning">安装前保持外部 3.3 V 稳定。烧录器可以断开，但建议保留以后可重新接入的 SWire 焊盘和固件备份。</p>
           <label><input id="ota-power-confirm" type="checkbox"> 我已确认供电稳定，并理解极端故障仍可能需要 SWire 救援</label>
-          <button id="ota-arm" class="secondary" disabled>第一步：授权安装</button>
-          <button id="ota-install" disabled>第二步：切换槽位并重启</button>
+          <button id="ota-arm" class="secondary" disabled>第一步：准备安装</button>
+          <button id="ota-install" disabled>第二步：安装并重启</button>
         </div>
       </details>
     </section>
@@ -137,6 +138,7 @@
   const otaProgress = document.querySelector('#ota-progress');
   const otaStatus = document.querySelector('#ota-status');
   const otaInstallPanel = document.querySelector('#ota-install-panel');
+  const otaInstallHint = document.querySelector('#ota-install-hint');
   const otaPowerConfirm = document.querySelector('#ota-power-confirm');
   const otaArm = document.querySelector('#ota-arm');
   const otaInstall = document.querySelector('#ota-install');
@@ -167,9 +169,24 @@
     otaStage.disabled = !otaSupported || !firmware.files.length || !otaCandidate;
     const installReady = !!(otaCapabilities & 1) && !!otaCandidate &&
       !!otaLastResponse && otaLastResponse.phase >= 3 && otaLastResponse.phase <= 5;
-    otaInstallPanel.hidden = !installReady;
+    otaInstallPanel.hidden = false;
     otaArm.disabled = !installReady || otaLastResponse.phase !== 3 || !otaPowerConfirm.checked;
     otaInstall.disabled = !installReady || otaLastResponse.phase !== 5 || !otaPowerConfirm.checked;
+    if (!otaSupported) {
+      otaInstallHint.textContent = '请先连接支持 OTA v2 M2 的价签。';
+    } else if (!(otaCapabilities & 1)) {
+      otaInstallHint.textContent = '这台价签只支持上传与校验，当前固件不支持安装。';
+    } else if (!otaCandidate) {
+      otaInstallHint.textContent = '请选择有效的 HINK 固件，然后上传到非活动槽并校验。';
+    } else if (!otaLastResponse || otaLastResponse.phase < 3) {
+      otaInstallHint.textContent = '固件尚未完成板端校验；请先点击“上传到暂存区并校验”。';
+    } else if (otaLastResponse.phase === 3) {
+      otaInstallHint.textContent = '候选固件已校验。确认供电稳定后，点击“准备安装”。';
+    } else if (otaLastResponse.phase === 5) {
+      otaInstallHint.textContent = '安装准备完成。再次确认供电稳定后，点击“安装并重启”。';
+    } else {
+      otaInstallHint.textContent = '设备正在处理安装，请等待重启后重新连接并核对版本。';
+    }
   }
 
   function drawPlaceholder() {
