@@ -83,15 +83,15 @@
 
       <details class="ota">
         <summary>固件升级实验区（OTA v2 M1/M2）</summary>
-        <p class="warning">上传与校验不会安装。支持安装的价签会在校验通过后显示独立的两步安装区；M2 还会显示断电日志状态。M2 真机断电矩阵完成前仍须保留 SWire 救援。</p>
+        <p class="warning">上传与校验不会安装。支持安装的价签会在校验通过后显示独立的两步安装区；M2 还会显示断电日志状态。正常 OTA 不需要连接烧录器，但极端损坏仍可能需要重新接入 SWire；当前版本没有固件签名，请只在可信环境使用。</p>
         <label for="firmware">选择 HINK 固件（.bin）</label>
         <input id="firmware" type="file" accept=".bin,application/octet-stream" disabled>
         <button id="ota-stage" class="secondary" disabled>上传到暂存区并校验（不安装）</button>
         <progress id="ota-progress" value="0" max="100"></progress>
         <p id="ota-status">连接支持 OTA v2 M0 的测试价签后才能使用。</p>
         <div id="ota-install-panel" hidden>
-          <p class="warning">安装前保持外部 3.3 V 稳定，并保持 SWire 救援连接可用。</p>
-          <label><input id="ota-power-confirm" type="checkbox"> 我已确认外部 3.3 V 稳定且 SWire 可立即救援</label>
+          <p class="warning">安装前保持外部 3.3 V 稳定。烧录器可以断开，但建议保留以后可重新接入的 SWire 焊盘和固件备份。</p>
+          <label><input id="ota-power-confirm" type="checkbox"> 我已确认供电稳定，并理解极端故障仍可能需要 SWire 救援</label>
           <button id="ota-arm" class="secondary" disabled>第一步：授权安装</button>
           <button id="ota-install" disabled>第二步：切换槽位并重启</button>
         </div>
