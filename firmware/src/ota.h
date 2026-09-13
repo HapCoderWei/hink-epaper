@@ -4,3 +4,5 @@
  * CRC-bound confirmation commands before the deferred boot-marker switch. */
 int custom_otaWrite(void *p);
 void ota_v2_process(void);
+void ota_v2_recovery_init(void);
+void ota_v2_recovery_runtime_ready(void);

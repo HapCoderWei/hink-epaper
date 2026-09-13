@@ -18,12 +18,16 @@ extern settings_struct settings;
 _attribute_ram_code_ void user_init_normal(void)
 {
     random_generator_init();
+    /* M2 starts a logged trial before BLE initialization, or schedules the
+     * bounded rollback path when three trial boots failed to confirm. */
+    ota_v2_recovery_init();
     init_ble();
     init_flash();
     /* The panel rail is always powered. Do not equate GPIO levels with
      * power-off: explicitly request controller sleep, without a refresh. */
     epd_prepare_boot_sleep();
     set_adv_data(0, 100, 3000);
+    ota_v2_recovery_runtime_ready();
 }
 
 _attribute_ram_code_ void user_init_deepRetn(void)

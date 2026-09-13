@@ -20,6 +20,7 @@ PROJECT_NAME := ATC_HINK_E0213A162_BLE
 # integer for candidate builds that must be distinguishable on a device.
 HINK_BOARD_ID ?= 0x213a
 HINK_FW_VERSION ?= 1
+HINK_TRIAL_FAIL_TEST ?= 0
 
 # Use separate output directories for each diagnostic to avoid stale objects.
 # Keep this option separate from GCC_FLAGS so the normal SDK flags survive.
@@ -65,6 +66,9 @@ INCLUDE_PATHS := -I$(TEL_PATH)/components -I$(PROJECT_PATH)
 GCC_FLAGS += $(TEL_CHIP)
 GCC_FLAGS += -DHINK_DIAG_ADV_UNITS=$(DIAG_ADV_UNITS)
 GCC_FLAGS += -DHINK_FW_VERSION=$(HINK_FW_VERSION)
+ifeq ($(HINK_TRIAL_FAIL_TEST),1)
+GCC_FLAGS += -DHINK_OTA_TRIAL_FAIL_TEST=1
+endif
 
 LS_FLAGS := $(PROJECT_PATH_STATIC)/boot.link
 

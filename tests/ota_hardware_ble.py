@@ -86,6 +86,12 @@ def parse_status(data, expected_command):
     status["firmware_version"] = (
         struct.unpack_from("<I", data, 24)[0] if len(data) >= 28 else None
     )
+    status.update(
+        recovery_state=data[28] if len(data) >= 32 else None,
+        recovery_action=data[29] if len(data) >= 32 else None,
+        journal_valid=data[30] if len(data) >= 32 else None,
+        journal_corrupt=data[31] if len(data) >= 32 else None,
+    )
     return status
 
 
@@ -456,7 +462,12 @@ async def show_info(name_prefix, address):
     print(
         f"OTA_MILESTONE={info['milestone']} CURRENT_SLOT={info['current_slot']} "
         f"TARGET_SLOT={info['target_slot']} INSTALL_CAPABILITY={info['capabilities'] & 1} "
-        f"FIRMWARE_VERSION={info['firmware_version']} PHASE={info['phase']}"
+        f"RECOVERY_LOG_CAPABILITY={(info['capabilities'] >> 1) & 1} "
+        f"FIRMWARE_VERSION={info['firmware_version']} PHASE={info['phase']} "
+        f"RECOVERY_STATE={info['recovery_state']} "
+        f"RECOVERY_ACTION={info['recovery_action']} "
+        f"JOURNAL_VALID={info['journal_valid']} "
+        f"JOURNAL_CORRUPT={info['journal_corrupt']}"
     )
 
 

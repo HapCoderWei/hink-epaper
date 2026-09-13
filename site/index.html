@@ -38,7 +38,7 @@
 <body>
 <main>
   <h1>HINK 2.13 三色价签</h1>
-  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth · 界面 v0.6 OTA v2 M1</p>
+  <p class="lead">122 × 250 · 黑 / 白 / 红 · Web Bluetooth · 界面 v0.7 OTA v2 M2</p>
   <div class="grid">
     <section class="panel screen"><canvas id="preview" width="122" height="250"></canvas></section>
     <section class="panel">
@@ -82,8 +82,8 @@
       <p id="status">等待连接。</p>
 
       <details class="ota">
-        <summary>固件升级实验区（OTA v2 M1）</summary>
-        <p class="warning">上传与校验不会安装。支持 M1-C 的价签会在校验通过后显示独立的两步安装区，安装会切换启动槽并重启。</p>
+        <summary>固件升级实验区（OTA v2 M1/M2）</summary>
+        <p class="warning">上传与校验不会安装。支持安装的价签会在校验通过后显示独立的两步安装区；M2 还会显示断电日志状态。M2 真机断电矩阵完成前仍须保留 SWire 救援。</p>
         <label for="firmware">选择 HINK 固件（.bin）</label>
         <input id="firmware" type="file" accept=".bin,application/octet-stream" disabled>
         <button id="ota-stage" class="secondary" disabled>上传到暂存区并校验（不安装）</button>
@@ -299,7 +299,8 @@
     const statusNames = [
       '成功', '命令长度错误', '协议版本不匹配', '硬件型号不匹配', '当前阶段不允许该操作',
       '地址或长度越界', '分包偏移不连续', 'Flash 写入后读回不一致', 'CRC32 不一致', '未知命令',
-      '固件清单无效', 'Telink 镜像头或原生 CRC 无效', '需要安装确认', '启动标记校验失败', '不支持的启动槽布局'
+      '固件清单无效', 'Telink 镜像头或原生 CRC 无效', '需要安装确认', '启动标记校验失败', '不支持的启动槽布局',
+      '旧固件恢复备份校验失败', '断电恢复日志写入或读回失败'
     ];
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const response = {
@@ -311,7 +312,11 @@
       currentSlot: bytes.length >= 24 ? bytes[21] : null,
       targetSlot: bytes.length >= 24 ? bytes[22] : null,
       milestone: bytes.length >= 24 ? bytes[23] : 0,
-      firmwareVersion: bytes.length >= 28 ? view.getUint32(24, true) : null
+      firmwareVersion: bytes.length >= 28 ? view.getUint32(24, true) : null,
+      recoveryState: bytes.length >= 32 ? bytes[28] : null,
+      recoveryAction: bytes.length >= 32 ? bytes[29] : null,
+      journalValid: bytes.length >= 32 ? bytes[30] : null,
+      journalCorrupt: bytes.length >= 32 ? bytes[31] : null
     };
     if (response.status !== 0)
       throw new Error(statusNames[response.status] || `设备错误 ${response.status}`);
@@ -384,7 +389,15 @@
         const target = response.targetSlot === 0 ? 'A' : response.targetSlot === 1 ? 'B' : '未知';
         const version = response.firmwareVersion == null ? '未知' : response.firmwareVersion;
         const install = response.capabilities & 1 ? '支持两步确认安装' : '只能上传和校验';
-        otaStatus.textContent = `已识别 OTA v2 M1：当前版本 ${version}，当前槽 ${current}，非活动目标槽 ${target}；${install}。`;
+        if (response.milestone >= 2) {
+          const states = ['无记录', '稳定基线', '安装意图', '启动标记已切换', '试运行', '已确认', '回滚意图', '回滚完成'];
+          const actions = ['正常启动', '继续安装', '继续切槽', '开始试运行', '恢复旧槽', '清理失败候选', '需要 SWire 救援'];
+          const recoveryState = states[response.recoveryState] || `未知状态 ${response.recoveryState}`;
+          const recoveryAction = actions[response.recoveryAction] || `未知动作 ${response.recoveryAction}`;
+          otaStatus.textContent = `已识别 OTA v2 M2：当前版本 ${version}，当前槽 ${current}，非活动目标槽 ${target}；${install}。\n断电日志：${recoveryState}；启动判定：${recoveryAction}；有效/损坏记录 ${response.journalValid}/${response.journalCorrupt}。M2-C 会在试运行稳定 5 秒后确认；连续 3 次未确认时尝试恢复旧槽。`;
+        } else {
+          otaStatus.textContent = `已识别 OTA v2 M1：当前版本 ${version}，当前槽 ${current}，非活动目标槽 ${target}；${install}。`;
+        }
       } else {
         otaStatus.textContent = '已识别 OTA v2 M0：可安全测试上传与校验；本阶段不能安装。';
       }
