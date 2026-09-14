@@ -71,6 +71,8 @@
     .brand-subtitle { margin: 2px 0 0; color: #aeb9bc; font-size: 11px; letter-spacing: .11em; text-transform: uppercase; }
     .topbar-meta { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
     .spec-chip { padding: 7px 10px; color: #c5cdcf; border: 1px solid #3c4549; border-radius: 999px; font: 600 11px/1 Menlo, monospace; }
+    .firmware-link { padding: 8px 11px; color: #dce2e3; border: 1px solid #3c4549; border-radius: 8px; background: #202629; font-size: 11px; font-weight: 700; text-decoration: none; }
+    .firmware-link:hover { color: var(--white); border-color: #657074; }
     .connection-pill {
       display: inline-flex;
       align-items: center;
@@ -263,7 +265,7 @@
     }
     @media (max-width: 700px) {
       .topbar { position: static; min-height: 68px; padding: 12px 16px; }
-      .brand-subtitle, .topbar-meta .spec-chip { display: none; }
+      .brand-subtitle, .topbar-meta .spec-chip, .firmware-link { display: none; }
       .brand-name { font-size: 16px; }
       .connection-pill { min-width: 0; }
       main { width: min(100% - 24px, 560px); padding: 24px 0 96px; }
@@ -303,6 +305,7 @@
     </div>
     <div class="topbar-meta">
       <span class="spec-chip">LANDSCAPE · 250 × 122</span>
+      <a class="firmware-link" href="firmware.html">固件下载</a>
       <span id="connection-pill" class="connection-pill" data-state="disconnected">
         <i class="connection-dot" aria-hidden="true"></i>
         <span id="connection-label">未连接</span>
@@ -438,7 +441,7 @@
           </div>
         </section>
 
-        <details class="ota">
+        <details id="ota-tools" class="ota">
           <summary>
             <span class="ota-summary-copy">
               <i class="ota-summary-icon" aria-hidden="true">↥</i>
@@ -448,6 +451,7 @@
           </summary>
           <div class="ota-body">
             <p class="warning">上传和校验不会安装固件。安装仍需要稳定供电确认和两步操作；当前版本没有固件签名，只能在可信环境使用。</p>
+            <p class="hint"><a href="firmware.html">下载最新固件、核对 SHA-256，并查看完整更新说明</a></p>
             <div class="device-data" aria-label="价签固件状态">
               <div class="data-cell"><span>当前版本</span><strong id="device-version">—</strong></div>
               <div class="data-cell"><span>当前槽位</span><strong id="device-slot">—</strong></div>
@@ -475,7 +479,7 @@
 
     <footer class="footer">
       <span>HINK 2.13″ · Web Bluetooth · 数据仅在本机处理</span>
-      <span>OTA v2 M2 · 极端故障仍需 SWire 救援</span>
+      <span><a href="firmware.html">固件下载与历史版本</a> · OTA v2 M2 · 极端故障仍需 SWire 救援</span>
     </footer>
   </main>
 </div>

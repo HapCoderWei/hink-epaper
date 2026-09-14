@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="HINK 2.13 英寸黑白红电子价签社区固件：BLE 传图、黑白红三色刷新、低功耗运行、OTA v2 M2 双槽更新，以及 TLSR SWire 首次烧录接线和步骤说明。">
+  <meta name="theme-color" content="#d92b38">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'none'">
+  <title>HINK E-Paper Community Firmware</title>
+  <link rel="stylesheet" href="firmware.css?v=5">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="shell nav" aria-label="主导航">
+      <a class="brand" href="index.html"><i class="brand-mark" aria-hidden="true"></i><span><strong>HINK Community</strong><span>E-paper firmware</span></span></a>
+      <div class="nav-links">
+        <a href="#firmware">固件</a><a href="#wiring">接线</a><a href="#first-flash">首次烧录</a><a href="#ota">OTA 更新</a><a class="studio-link" href="index.html">打开控制工具</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="shell hero">
+      <div class="hero-copy-wrap">
+        <p class="eyebrow">Community release · v1.0.0</p>
+        <h1>让这块电子价签，真正属于你。</h1>
+        <p class="hero-copy">一份面向硬件爱好者的完整固件：蓝牙传图、黑白红三色刷新、低功耗运行，以及带双槽与受限回滚的 OTA v2 M2。</p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://github.com/HapCoderWei/hink-epaper/releases/download/v1.0.0/HINK_E0213A162_Community_v1.0.0.bin">下载社区版固件</a>
+          <a class="button" href="#wiring">先看烧录接线</a>
+        </div>
+        <p class="hero-note">适用：HINK-E0213A162-FPC-A0 · TLSR8359F512ET32 · Board ID 0x213A</p>
+      </div>
+      <div class="device-card" aria-label="固件身份牌">
+        <div class="screen">
+          <div class="screen-ruler" aria-hidden="true"></div>
+          <p class="screen-kicker">HINK E-PAPER COMMUNITY</p>
+          <p class="release-version">v1.0.0</p>
+          <p class="release-name">COMPLETE COMMUNITY RELEASE</p>
+          <dl class="screen-grid">
+            <div><dt>DEVICE FW</dt><dd>v19</dd></div><div><dt>IMAGE SIZE</dt><dd>61,320 bytes</dd></div>
+            <div class="wide"><dt>SHA-256</dt><dd>126b37fc516e…bbe97</dd></div>
+          </dl>
+          <div class="pixel-signature" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="device-foot"><span>E0213A162</span><span>VERIFY BEFORE FLASH</span></div>
+      </div>
+    </section>
+
+    <section class="capability-band" aria-label="固件主要能力">
+      <div class="shell capability-grid">
+        <div><span>01</span><strong>蓝牙传图</strong><p>250×122 横向预览，黑白红三色处理。</p></div>
+        <div><span>02</span><strong>低功耗运行</strong><p>普通休眠与屏幕深睡，不使用诊断唤醒模式。</p></div>
+        <div><span>03</span><strong>OTA v2 M2</strong><p>双启动槽、恢复日志、试运行与受限回滚。</p></div>
+      </div>
+    </section>
+
+    <section id="firmware" class="shell section">
+      <div class="section-head">
+        <div><p class="section-label">COMMUNITY RELEASE</p><h2>社区版固件</h2></div>
+        <p>面向硬件爱好者的完整固件，支持蓝牙传图、黑白红三色刷新和 OTA v2 M2 更新。首次接管需要 SWire 烧录，之后可通过网页 OTA 升级。</p>
+      </div>
+      <article class="release-card">
+        <div class="release-main">
+          <p class="release-badge">推荐版本</p>
+          <h3>HINK E-Paper Community <span>v1.0.0</span></h3>
+          <p>这是面向爱好者正式发布的完整版本，设备内部版本为 <b>v19</b>，适配 HINK-E0213A162-FPC-A0 价签。首次接管设备使用 SWire 烧录，以后可直接通过网页 OTA 更新。</p>
+          <div class="feature-list" aria-label="固件功能"><span>BLE 无线传图</span><span>黑白红三色刷新</span><span>低功耗路径</span><span>OTA v2 M2</span><span>双槽安装</span><span>受限自动回滚</span></div>
+          <div class="release-actions">
+            <a class="button primary" href="https://github.com/HapCoderWei/hink-epaper/releases/download/v1.0.0/HINK_E0213A162_Community_v1.0.0.bin">下载 .bin</a>
+            <a class="text-link" href="https://github.com/HapCoderWei/hink-epaper/releases/tag/v1.0.0">查看版本说明</a>
+          </div>
+        </div>
+        <dl class="release-spec">
+          <div><dt>文件名</dt><dd>HINK_E0213A162_Community_v1.0.0.bin</dd></div><div><dt>适配板型</dt><dd>HINK-E0213A162-FPC-A0</dd></div>
+          <div><dt>芯片</dt><dd>TLSR8359F512ET32</dd></div><div><dt>设备版本</dt><dd>19</dd></div>
+          <div><dt>文件长度</dt><dd>61,320 bytes · 0xEF88</dd></div><div class="sha-row"><dt>SHA-256</dt><dd class="digest">126b37fc516e76f103131e0595a36112ff828ded8f372021adb562d3f30bbe97<button class="copy-btn" type="button" data-copy="126b37fc516e76f103131e0595a36112ff828ded8f372021adb562d3f30bbe97">复制</button></dd></div>
+        </dl>
+      </article>
+      <div class="evidence-note"><strong>实机验证结果</strong><p>固件清单、板型与两层 CRC 校验均已通过；真机完成 BLE 重连、网页传图、黑白红三色刷新、双槽安装及异常候选自动恢复。低功耗功能已启用；同一低功耗路径曾实测 30～40 µA，但本次 v19 未单独复测该电流，因此这里不把具体数值作为承诺。</p></div>
+    </section>
+
+    <section id="wiring" class="section wiring-section">
+      <div class="shell">
+        <div class="section-head">
+          <div><p class="section-label">FIRST FLASH · WIRING</p><h2>TLSR 烧录器怎么接价签</h2></div>
+          <p>烧录接口是单线 SWire。程序信号只有一根，但供电方式必须正确：SWM 接 SWS、所有设备共地，并且整板只能有一个 3.0～3.3 V 电源。</p>
+        </div>
+        <div class="critical-warning"><strong>接线前先取下两颗电池</strong><span>禁止 5 V；禁止电池与外部 3.3 V 同时供电；不确认引脚时先用万用表通断档核对。</span></div>
+
+        <div class="wiring-grid">
+          <article class="wiring-card recommended">
+            <div class="wiring-title"><span>推荐</span><h3>独立稳压 3.3 V 给价签供电</h3><p>适用于烧录器 PWR 输出能力未知或不足的情况。</p></div>
+            <div class="diagram-scroll"><svg class="wiring-diagram" viewBox="0 0 760 390" role="img" aria-labelledby="external-power-title external-power-desc">
+              <title id="external-power-title">TLSR 烧录器与独立 3.3 V 电源接线图</title>
+              <desc id="external-power-desc">烧录器 SWM 接价签 P6-3 SWS，烧录器 GND 和独立电源负极共同接价签 P6-1 GND，独立电源正极接价签 P6-5 VCC，烧录器 PWR 不连接。</desc>
+              <rect class="box programmer" x="20" y="40" width="205" height="180" rx="16"></rect><text class="box-title" x="122" y="78" text-anchor="middle">TLSRPGM 烧录器</text>
+              <circle class="pin swire" cx="205" cy="122" r="8"></circle><text class="pin-label" x="178" y="127" text-anchor="end">SWM</text>
+              <circle class="pin ground" cx="205" cy="170" r="8"></circle><text class="pin-label" x="178" y="175" text-anchor="end">GND</text>
+              <circle class="pin unused" cx="205" cy="204" r="8"></circle><text class="pin-label muted" x="178" y="209" text-anchor="end">PWR 不接</text>
+              <rect class="box supply" x="20" y="260" width="205" height="105" rx="16"></rect><text class="box-title" x="122" y="292" text-anchor="middle">稳压 3.3 V 电源</text>
+              <circle class="pin power" cx="205" cy="320" r="8"></circle><text class="pin-label" x="178" y="325" text-anchor="end">+3.3 V</text>
+              <circle class="pin ground" cx="205" cy="348" r="8"></circle><text class="pin-label" x="178" y="353" text-anchor="end">GND</text>
+              <rect class="box tag" x="525" y="70" width="215" height="265" rx="20"></rect><text class="box-title" x="632" y="108" text-anchor="middle">HINK 价签 · P6</text>
+              <rect class="tag-pin" x="555" y="140" width="154" height="42" rx="8"></rect><text class="tag-label" x="632" y="166" text-anchor="middle">P6-3 · SWS</text>
+              <rect class="tag-pin" x="555" y="206" width="154" height="42" rx="8"></rect><text class="tag-label" x="632" y="232" text-anchor="middle">P6-1 · GND</text>
+              <rect class="tag-pin" x="555" y="272" width="154" height="42" rx="8"></rect><text class="tag-label" x="632" y="298" text-anchor="middle">P6-5 · VCC</text>
+              <path class="wire swire-wire" d="M213 122 C340 122 400 161 555 161"></path><path class="wire ground-wire" d="M213 170 C350 170 400 227 555 227"></path>
+              <path class="wire ground-wire" d="M213 348 C350 348 410 227 555 227"></path><path class="wire power-wire" d="M213 320 C360 320 430 293 555 293"></path>
+              <text class="wire-note swire-text" x="360" y="115">SWire 信号</text><text class="wire-note ground-text" x="350" y="218">共地</text><text class="wire-note power-text" x="370" y="315">唯一电源</text>
+            </svg></div>
+            <p class="mobile-pan-hint">横向滑动查看完整接线图 →</p>
+            <ul class="wire-summary"><li><b>SWM → P6-3 SWS</b></li><li><b>烧录器 GND → P6-1 GND</b></li><li><b>电源 − → P6-1 GND</b></li><li><b>电源 +3.3 V → P6-5 VCC</b></li><li>烧录器 PWR 悬空，不连接</li></ul>
+          </article>
+
+          <article class="wiring-card">
+            <div class="wiring-title"><span>可选</span><h3>由烧录器的 3.3 V 输出供电</h3><p>仅在确认输出是 3.0～3.3 V 且足以带动整板时使用。</p></div>
+            <div class="simple-diagram" role="img" aria-label="烧录器供电接线：SWM 接 P6-3 SWS，GND 接 P6-1 GND，3.3 V 或 PWR 接 P6-5 VCC">
+              <div class="simple-device"><strong>TLSRPGM</strong><span>SWM</span><span>GND</span><span>3V3 / PWR</span></div>
+              <div class="simple-wires" aria-hidden="true"><i class="blue"></i><i class="black"></i><i class="red"></i></div>
+              <div class="simple-device tag-side"><strong>HINK · P6</strong><span>P6-3 · SWS</span><span>P6-1 · GND</span><span>P6-5 · VCC</span></div>
+            </div>
+            <ul class="wire-summary"><li><b>SWM → P6-3 SWS</b></li><li><b>GND → P6-1 GND</b></li><li><b>3.3 V / PWR → P6-5 VCC</b></li><li>价签电池必须取下</li><li>若烧录时掉线或复位，改用左侧独立电源方案</li></ul>
+          </article>
+        </div>
+        <div class="orientation-note"><strong>电气图与实物图配合确认</strong><p>不同拍摄方向可能造成左右镜像。请以板上 P6 丝印和下方实物引脚大图为准：按照片方向，P6 左列前三个焊盘从上到下依次是 GND、SWS、3.3V。接线前仍建议用万用表确认 GND 与大面积地相通。</p><a class="photo-jump" href="#pinout-photo">查看 P6 实物引脚大图</a></div>
+      </div>
+    </section>
+
+    <section id="first-flash" class="shell section">
+      <div class="section-head">
+        <div><p class="section-label">PATH A · SWIRE</p><h2>首次烧录步骤</h2></div>
+        <p>适用于原厂固件、B1 / v0.1.x、版本未知或 OTA v2 握手失败的价签。第一次接管设备必须先保存原厂 Flash。</p>
+      </div>
+      <ol class="procedure">
+        <li><div><strong>确认设备与文件</strong><p>核对屏幕 FPC、MCU 和 Board ID；下载社区版固件，并确认 SHA-256 与页面一致。</p></div></li>
+        <li><div><strong>断电后接线</strong><p>取下电池，按上方推荐图连接 SWM、GND 和独立 3.3 V。接线完成后再给价签供电。</p></div></li>
+        <li><div><strong>先读芯片信息</strong><p>TLSRPGM 必须能稳定识别目标 MCU 与 Flash。出现激活超时、Flash ID 为 0 或读出全 0 时停止，不继续写入。</p></div></li>
+        <li><div><strong>备份完整原厂 Flash</strong><p>从 0x000000 读取 0x80000 字节并保存两份；确认两次备份 SHA-256 相同且内容不是全 0。</p></div></li>
+        <li><div><strong>从 0x000000 写入固件</strong><p>使用带扇区擦除的写入操作，只让工具擦除固件覆盖到的扇区；不要执行整片擦除。</p></div></li>
+        <li><div><strong>写后读回 0xEF88 字节</strong><p>读回长度必须与固件 61,320 字节一致，并逐字节比较；读回文件 SHA-256 应为页面公布值。</p></div></li>
+        <li><div><strong>恢复供电并验证功能</strong><p>停止外部供电、拆下烧录线，再装回电池。确认广播名称为 HINK_XXXXXX，连接网页并发送测试图，观察黑、白、红完整刷新。</p></div></li>
+      </ol>
+      <details class="command-reference">
+        <summary>展开 TLSRPGM 命令示例</summary>
+        <div>
+          <p>以下参数来自本项目已验证工具链。把串口和脚本路径替换成自己的实际位置；串口每次连接都可能变化。</p>
+          <code>python3 TlsrPgm.py -w -p /dev/cu.usbmodemXXXX -b 1500000 -t 50 -a 5000 i</code>
+          <code>python3 TlsrPgm.py -w -p /dev/cu.usbmodemXXXX -b 1500000 -t 50 -a 5000 rf 0x000000 0x80000 HINK_original_backup.bin</code>
+          <code>python3 TlsrPgm.py -w -p /dev/cu.usbmodemXXXX -b 1500000 -t 50 -a 5000 we 0x000000 HINK_E0213A162_Community_v1.0.0.bin</code>
+          <code>python3 TlsrPgm.py -w -p /dev/cu.usbmodemXXXX -b 1500000 -t 50 -a 5000 -g rf 0x000000 0xEF88 HINK_v1.0.0_readback.bin</code>
+          <code>shasum -a 256 HINK_E0213A162_Community_v1.0.0.bin HINK_v1.0.0_readback.bin</code>
+          <p class="command-warning">不要加入 <span class="mono">-c / CPU Stall</span>；本项目实测它会导致 TLSR8359 Flash 识别与读取异常。</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="ota" class="section ota-section">
+      <div class="shell">
+        <div class="section-head">
+          <div><p class="section-label">PATH B · OTA v2 M2</p><h2>后续 OTA 更新步骤</h2></div>
+          <p>只有已经运行 OTA v2 M2、网页能读出当前版本和槽位的价签才能走这条路径。旧 ATC OTA 页面始终禁止使用。</p>
+        </div>
+        <div class="ota-layout">
+          <ol class="procedure compact">
+            <li><div><strong>准备稳定供电</strong><p>确认电池接触可靠或使用稳定 3.0～3.3 V；保留原始备份和可重新接入的 SWire 焊盘。</p></div></li>
+            <li><div><strong>下载并校验固件</strong><p>确认文件名、板型、长度和 SHA-256；不要使用诊断版、故障注入版或来源不明的转载文件。</p></div></li>
+            <li><div><strong>连接价签并检查状态</strong><p>用 Mac Chrome 打开控制工具，在“固件维护”中核对当前版本、活动槽、目标槽和恢复日志。</p></div></li>
+            <li><div><strong>上传并由设备完整校验</strong><p>选择固件并点击“上传并校验”。进度 100% 仍未安装；必须等页面明确显示候选固件已经板端校验通过。</p></div></li>
+            <li><div><strong>完成两步安装</strong><p>勾选稳定供电确认，依次点击“准备安装”和“安装并重启”，不要刷新或关闭页面抢跑下一步。</p></div></li>
+            <li><div><strong>重连并验收</strong><p>重新连接，确认版本已经变化、槽位符合预期且恢复日志无损坏，再发送测试图确认三色刷新。</p></div></li>
+          </ol>
+          <aside class="ota-panel">
+            <p class="panel-label">OTA SAFETY GATE</p><h3>满足这四项，才开始更新</h3>
+            <ul><li>网页识别为 OTA v2 M2</li><li>稳定 3.0～3.3 V 供电</li><li>固件 SHA-256 已核对</li><li>SWire 焊盘和备份仍可用</li></ul>
+            <a class="button primary" href="index.html#ota-tools">打开传图与 OTA 工具</a>
+            <p>当前没有固件签名或身份认证，只在可信的近距离 BLE 环境使用。候选固件若损坏到无法执行早期恢复代码，仍可能需要 SWire。</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="gallery" class="shell section gallery-section">
+      <div class="section-head">
+        <div><p class="section-label">DEVICE REFERENCE</p><h2>设备识别与改造效果</h2></div>
+        <p>本项目改造的是 BLOZI Endor 2.13 英寸黑白红价签。下面给出原厂正反面、P6 烧录焊盘和刷入社区固件后的实物效果，便于对照设备再动手。</p>
+      </div>
+      <div class="gallery-grid">
+        <figure id="pinout-photo" class="photo-card pinout-photo">
+          <div class="photo-media"><img src="assets/firmware/p6-pinout.jpg" width="1086" height="1800" loading="lazy" alt="HINK 价签 PCB P6 烧录焊盘近照，已标出 GND、SWS 和 3.3V" data-zoom></div>
+          <figcaption><span>实物引脚</span><strong>P6 烧录焊盘</strong><p>按照片方向，P6 左列前三个焊盘从上到下分别为 GND、SWS、3.3V；中央芯片丝印为 TLSR8359。</p></figcaption>
+        </figure>
+        <figure class="photo-card">
+          <div class="photo-media"><img src="assets/firmware/original-front.jpg" width="942" height="900" loading="lazy" alt="改造前的 BLOZI Endor 电子价签正面" data-zoom></div>
+          <figcaption><span>改造前 · 正面</span><strong>2.13 英寸黑白红屏</strong><p>屏幕左侧带竖向条码区，外壳右上角有状态窗口。</p></figcaption>
+        </figure>
+        <figure class="photo-card">
+          <div class="photo-media"><img src="assets/firmware/original-back.jpg" width="997" height="900" loading="lazy" alt="改造前的 BLOZI Endor 电子价签背面铭牌" data-zoom></div>
+          <figcaption><span>改造前 · 背面</span><strong>BLOZI · Endor</strong><p>背面铭牌可见 BLOZI 品牌与 Endor 型号，可用于核对外壳。</p></figcaption>
+        </figure>
+        <figure class="photo-card result-photo">
+          <div class="photo-media"><img src="assets/firmware/community-result.jpg" width="1600" height="1154" loading="lazy" alt="刷入 HINK 社区固件并通过蓝牙传入黑白红图片后的价签" data-zoom></div>
+          <figcaption><span>改造完成</span><strong>网页蓝牙传图实物效果</strong><p>刷入社区固件后，通过网页发送图片，价签完成黑、白、红三色刷新。</p></figcaption>
+        </figure>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer"><div class="shell footer-inner"><span>HINK E-Paper Community Firmware · v1.0.0</span><span><a href="https://github.com/HapCoderWei/hink-epaper">源码与完整文档</a> · <a href="https://github.com/HapCoderWei/hink-epaper/releases/tag/v1.0.0">正式版本说明</a></span></div></footer>
+  <script src="firmware.js?v=1" defer></script>
+</body>
+</html>

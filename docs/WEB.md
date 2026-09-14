@@ -1,6 +1,12 @@
 # 网页使用与部署
 
-入口：https://hapcoderwei.github.io/hink-epaper/
+传图与 OTA 工具：<https://hapcoderwei.github.io/hink-epaper/>
+
+固件分享页：<https://hapcoderwei.github.io/hink-epaper/firmware.html>
+
+固件分享页是面向爱好者的统一入口，目前只展示 **HINK E-Paper Community v1.0.0**（设备内部版本 v19）。页面包含适配设备的正反面与改造效果照片、P6 实物引脚、SHA-256、TLSR 烧录器接线、首次烧录步骤和 OTA 更新步骤；开发中间镜像不会出现在该页面。维护方法见[固件发布流程](FIRMWARE_RELEASES.md)。
+
+两个页面的用途不同：原厂价签首次接管仍需使用 TLSRPGM 烧录器和 SWire，网页不直接控制烧录器；成功刷入 HINK 固件后，传图与 OTA 工具才通过 Web Bluetooth 工作。正常 OTA 不需要保持烧录器连接。
 
 `site/index.html` 是单文件纯前端，没有接口、数据库、外部 JS 或密钥。文件选择、缩放/裁切、三色量化在浏览器 Canvas 内完成，然后通过本机蓝牙发送；不会将选择的图片上传到 GitHub。GitHub 仍会接收到加载网页的普通 HTTP 请求。
 
