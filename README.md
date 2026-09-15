@@ -1,6 +1,6 @@
 # HINK 2.13 黑白红电子价签改造
 
-TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、黑白红三色墨水屏、低功耗运行和 OTA v2 M2 双槽更新。
+TLSR8359F512ET32 价签固件：支持 HINK-E0213A162-FPC-A0，以及实验支持的 FPC-A002 / SSD1680 三色屏；提供 BLE 无线传图、黑白红三色刷新、低功耗运行和 OTA v2 M2 双槽更新。
 
 **在线入口：[打开 HINK 网页传图](https://hapcoderwei.github.io/hink-epaper/) · [下载固件与查看更新说明](https://hapcoderwei.github.io/hink-epaper/firmware.html)**
 
@@ -26,6 +26,8 @@ TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、黑白红三色墨
 - 支持点击、拖放和粘贴图片；连接状态、发送进度、固件版本、启动槽及恢复日志改为结构化状态显示。
 - 默认预览为实体价签向右旋转 90° 后的 `250×122` 横向画面，发送时逐像素映射回设备原生 `122×250` 缓冲，BLE 双平面格式和固件协议不变。
 - 桌面与手机响应式页面、图片预览、旋转控件和 OTA 折叠/安全门槛已完成浏览器验证；横向实体方向尚待用带明显左右标记的图片做一次真机传图确认。
+- OTA 工具为两种屏幕提供显式型号选择，并核对固件清单中的 Board ID；型号不一致时会在上传和安装前阻止操作，设备端仍会做第二次板型校验。
+- FPC-A002 / SSD1680 独立固件已在 `HINK_C1623C` 上完成 SWire 写入、完整读回和内置三色测试图刷新，网页自选图片方向及该板型第一次 OTA 往返仍待验证。
 - 新增网页结构与横向坐标映射回归测试；完整 `bash tests/run.sh` 测试通过。
 
 ### 已发布基线：v0.1.0-b1
@@ -44,6 +46,7 @@ TLSR8359F512ET32 + HINK-E0213A162-FPC-A0：BLE 无线传图、黑白红三色墨
 
 - [B1 里程碑与待办](docs/MILESTONE_B1.md)
 - [硬件映射、屏幕协议与移植](docs/HARDWARE.md)
+- [FPC-A002 / SSD1680 三色屏移植与真机记录](docs/HARDWARE_GDEY0213Z98.md)
 - [编译、测试与烧录](docs/BUILD.md)
 - [固件分享页与 GitHub Release 发布流程](docs/FIRMWARE_RELEASES.md)
 - [BLE OTA 状态与风险审计](docs/OTA_STATUS.md)

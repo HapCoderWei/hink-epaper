@@ -8,18 +8,18 @@
 #include "epd_spi.h"
 #include "led.h"
 
-/*
- * HINK-E0213A162-FPC-A0, 2.13-inch black/white/red panel.
- *
- * The controller stores 128 pixels per row even though only 122 are visible.
- * Two active-low 1-bit planes are transferred in this order:
- *   black plane: 4000 bytes (command 0x10)
- *   red plane:   4000 bytes (command 0x13)
- *
- * This sequence and the GPIO mapping were verified on the target price tag.
- */
-
-#define EPD_RESET_PHASE_MS              200U
+/* Both supported panels store 128 pixels per row although only 122 are
+ * visible. Their 4000-byte black and red planes share the BLE representation,
+ * but their controller commands and BUSY polarity are not interchangeable. */
+#if HINK_PANEL_PROFILE == HINK_PANEL_GDEY0213Z98
+#define EPD_RESET_PRE_MS                   20U
+#define EPD_RESET_LOW_MS                    2U
+#define EPD_RESET_POST_MS                  20U
+#else
+#define EPD_RESET_PRE_MS                  200U
+#define EPD_RESET_LOW_MS                  200U
+#define EPD_RESET_POST_MS                 200U
+#endif
 #define EPD_POWER_ON_TIMEOUT_US    30000000UL
 #define EPD_BUSY_ASSERT_TIMEOUT_US  2000000UL
 #define EPD_REFRESH_TIMEOUT_US     60000000UL
@@ -43,7 +43,7 @@ static _attribute_ram_code_ uint8_t epd_wait_ready(uint32_t timeout_us)
 {
     uint32_t started = clock_time();
 
-    /* BUSY is active low on this panel. */
+    /* EPD_IS_BUSY supplies the selected panel's active-high/low polarity. */
     while (EPD_IS_BUSY())
     {
         if (clock_time_exceed(started, timeout_us))
@@ -67,15 +67,35 @@ static _attribute_ram_code_ void epd_write_cmd_data(uint8_t command,
 static _attribute_ram_code_ void epd_hard_reset(void)
 {
     gpio_write(EPD_RESET, 1);
-    WaitMs(EPD_RESET_PHASE_MS);
+    WaitMs(EPD_RESET_PRE_MS);
     gpio_write(EPD_RESET, 0);
-    WaitMs(EPD_RESET_PHASE_MS);
+    WaitMs(EPD_RESET_LOW_MS);
     gpio_write(EPD_RESET, 1);
-    WaitMs(EPD_RESET_PHASE_MS);
+    WaitMs(EPD_RESET_POST_MS);
 }
 
 static _attribute_ram_code_ uint8_t epd_write_verified_init(void)
 {
+#if HINK_PANEL_PROFILE == HINK_PANEL_GDEY0213Z98
+    /* Good Display GDEY0213Z98 / Waveshare 2.13 B V4 SSD1680 sequence. */
+    if (!epd_wait_ready(EPD_POWER_ON_TIMEOUT_US))
+        return 0;
+
+    EPD_WriteCmd(0x12); /* SW_RESET */
+    if (!epd_wait_ready(EPD_POWER_ON_TIMEOUT_US))
+        return 0;
+
+    epd_write_cmd_data(0x01, (const uint8_t[]){0xf9, 0x00, 0x00}, 3);
+    epd_write_cmd_data(0x11, (const uint8_t[]){0x03}, 1);
+    epd_write_cmd_data(0x44, (const uint8_t[]){0x00, 0x0f}, 2);
+    epd_write_cmd_data(0x45, (const uint8_t[]){0x00, 0x00, 0xf9, 0x00}, 4);
+    epd_write_cmd_data(0x4e, (const uint8_t[]){0x00}, 1);
+    epd_write_cmd_data(0x4f, (const uint8_t[]){0x00, 0x00}, 2);
+    epd_write_cmd_data(0x3c, (const uint8_t[]){0x05}, 1);
+    epd_write_cmd_data(0x18, (const uint8_t[]){0x80}, 1);
+    epd_write_cmd_data(0x21, (const uint8_t[]){0x80, 0x80}, 2);
+    return 1;
+#else
     static const uint8_t booster[] = {0x17, 0x17, 0x17};
 
     epd_write_cmd_data(0x06, booster, sizeof(booster));
@@ -87,6 +107,7 @@ static _attribute_ram_code_ uint8_t epd_write_verified_init(void)
 
     /* Deliberately do not send 0x61. It broke this panel during testing. */
     return 1;
+#endif
 }
 
 static _attribute_ram_code_ void epd_stream_plane(uint8_t command,
@@ -97,12 +118,18 @@ static _attribute_ram_code_ void epd_stream_plane(uint8_t command,
     EPD_WriteCmd(command);
     for (i = 0; i < EPD_PLANE_SIZE; ++i)
         EPD_WriteData(plane[i]);
+#if HINK_PANEL_PROFILE == HINK_PANEL_HINK_E0213A162
     EPD_WriteCmd(0x92); /* DATA_STOP */
+#endif
 }
 
 static _attribute_ram_code_ void epd_finish(uint8_t success)
 {
+#if HINK_PANEL_PROFILE == HINK_PANEL_GDEY0213Z98
+    epd_write_cmd_data(0x10, (const uint8_t[]){0x01}, 1); /* DEEP_SLEEP */
+#else
     epd_write_cmd_data(0x07, (const uint8_t[]){0xa5}, 1); /* DEEP_SLEEP */
+#endif
     WaitMs(10); /* Keep reset deasserted while the command is processed. */
     EPD_idle_pins();
     epd_update_state = EPD_STATE_IDLE;
@@ -114,7 +141,9 @@ static _attribute_ram_code_ void epd_finish(uint8_t success)
 
 static _attribute_ram_code_ void epd_begin_power_off(void)
 {
+#if HINK_PANEL_PROFILE == HINK_PANEL_HINK_E0213A162
     EPD_WriteCmd(0x02); /* POWER_OFF */
+#endif
     epd_state_started = clock_time();
     epd_update_state = EPD_STATE_WAIT_POWER_OFF;
 }
@@ -174,10 +203,15 @@ _attribute_ram_code_ void EPD_Display(unsigned char *image, int size,
         return;
     }
 
+#if HINK_PANEL_PROFILE == HINK_PANEL_GDEY0213Z98
+    epd_stream_plane(0x24, image + EPD_BLACK_PLANE_OFFSET);
+    epd_stream_plane(0x26, image + EPD_RED_PLANE_OFFSET);
+    EPD_WriteCmd(0x20); /* MASTER_ACTIVATION */
+#else
     epd_stream_plane(0x10, image + EPD_BLACK_PLANE_OFFSET);
     epd_stream_plane(0x13, image + EPD_RED_PLANE_OFFSET);
-
     EPD_WriteCmd(0x12); /* DISPLAY_REFRESH */
+#endif
     epd_state_started = clock_time();
     epd_update_state = EPD_STATE_WAIT_BUSY_ASSERT;
 }

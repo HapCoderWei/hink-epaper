@@ -16,7 +16,8 @@ for (const id of [
   'preview', 'file', 'image-drop', 'fit', 'processing', 'rotate-left',
   'rotate-right', 'connect', 'connect-all', 'send', 'progress', 'status',
   'firmware', 'ota-stage', 'ota-progress', 'ota-status', 'ota-install-panel',
-  'ota-power-confirm', 'ota-arm', 'ota-install', 'ota-tools', 'connection-pill'
+  'ota-power-confirm', 'ota-arm', 'ota-install', 'ota-tools', 'connection-pill',
+  'ota-panel-a162', 'ota-panel-z98', 'ota-panel-match'
 ]) {
   assert(ids.includes(id), `missing required control #${id}`);
 }
@@ -26,6 +27,12 @@ assert(/href="firmware\.html"/.test(html), 'control studio must link to firmware
 assert(/id="ota-install-panel" hidden/.test(html), 'install controls must stay hidden until verification');
 assert(/id="preview" width="250" height="122"/.test(html), 'preview must use the landscape 250 x 122 view');
 assert(/const DEVICE_WIDTH = 122, DEVICE_HEIGHT = 250/.test(html), 'BLE output must retain the native panel dimensions');
+assert(/new Map\(\[\s*\[0x213a,[\s\S]*\[0x2198,/.test(html), 'OTA tool must describe both isolated panel board IDs');
+assert(/begin\[2\] = otaCandidate\.boardId/.test(html), 'OTA BEGIN must use the candidate manifest board ID');
+assert(/name="ota-panel"[^>]*value="0x213a"/.test(html), 'OTA model picker must include the HINK A162 panel');
+assert(/name="ota-panel"[^>]*value="0x2198"/.test(html), 'OTA model picker must include the FPC-A002 panel');
+assert(/panelSelectionMatchesCandidate\(\)/.test(html), 'OTA upload must require selected panel and manifest to match');
+assert(/禁止上传：目标是/.test(html), 'OTA mismatch must provide an explicit blocking message');
 assert(/const landscapeX = DEVICE_HEIGHT - 1 - y/.test(html), 'BLE output must reverse the landscape x axis into native rows');
 assert(/const landscapeY = x/.test(html), 'BLE output must map native columns into landscape y');
 

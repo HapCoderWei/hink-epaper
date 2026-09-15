@@ -8,6 +8,8 @@ sed '/^#include/d' "$source_dir/src/epd.c" >> "$test_dir/production.inc"
 sed '/^#include/d' "$source_dir/src/led.c" >> "$test_dir/production.inc"
 cc -std=c99 -Wall -Wextra -Werror -I "$test_dir" "$root/tests/epd_power_test.c" -o "$test_dir/epd_power_test"
 "$test_dir/epd_power_test"
+cc -std=c99 -Wall -Wextra -Werror -I "$test_dir" "$root/tests/epd_ssd1680_test.c" -o "$test_dir/epd_ssd1680_test"
+"$test_dir/epd_ssd1680_test"
 sed '/^#include/d' "$source_dir/src/ota.c" > "$test_dir/production_ota.inc"
 cc -std=c99 -Wall -Wextra -Werror -I "$test_dir" -I "$source_dir/src" \
   "$root/tests/ota_v2_test.c" "$source_dir/src/ota_recovery.c" \

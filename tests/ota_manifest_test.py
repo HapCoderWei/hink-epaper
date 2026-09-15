@@ -89,6 +89,17 @@ class OtaManifestTest(unittest.TestCase):
         self.assertNotEqual(verify.returncode, 0)
         self.assertIn("board mismatch", verify.stderr)
 
+    def test_ssd1680_panel_board_id_is_supported(self):
+        result = self.run_tool(
+            "append", self.image_path, "--board", "0x2198", "--version", "20"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        verify = self.run_tool("verify", self.image_path, "--board", "0x2198")
+        self.assertEqual(verify.returncode, 0, verify.stderr)
+        fields = json.loads(self.run_tool("inspect", self.image_path, "--json").stdout)
+        self.assertEqual(fields["board_id"], 0x2198)
+        self.assertEqual(fields["firmware_version"], 20)
+
     def test_wrong_payload_length_is_rejected(self):
         self.append_valid_image()
         self.rewrite_manifest(payload_length=len(self.payload) + 1)

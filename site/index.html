@@ -245,6 +245,33 @@
     .data-cell { min-width: 0; padding: 11px; border: 1px solid var(--line); border-radius: 11px; background: #f5f7f6; }
     .data-cell span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
     .data-cell strong { display: block; overflow: hidden; font: 700 12px/1.2 Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
+    .panel-picker { margin: 18px 0 4px; padding: 0; border: 0; }
+    .panel-picker legend { margin-bottom: 9px; font-size: 12px; font-weight: 750; }
+    .panel-options { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .panel-choice { position: relative; min-width: 0; cursor: pointer; }
+    .panel-choice input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .panel-card {
+      position: relative;
+      display: block;
+      min-height: 104px;
+      padding: 13px 13px 12px 17px;
+      overflow: hidden;
+      border: 1px solid #cbd3d1;
+      border-radius: 12px;
+      background: var(--white);
+      transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+    }
+    .panel-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: #c78d25; opacity: .38; }
+    .panel-choice:hover .panel-card { border-color: #aab5b2; transform: translateY(-1px); }
+    .panel-choice input:focus-visible + .panel-card { outline: 3px solid rgba(8,126,122,.32); outline-offset: 3px; }
+    .panel-choice input:checked + .panel-card { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(8,126,122,.12); }
+    .panel-choice input:checked + .panel-card::after { content: "✓"; position: absolute; top: 10px; right: 11px; color: var(--teal); font-size: 14px; font-weight: 800; }
+    .panel-code { display: block; margin-bottom: 9px; color: #8a6421; font: 700 9px/1 Menlo, monospace; letter-spacing: .1em; }
+    .panel-card strong { display: block; padding-right: 18px; font-size: 12px; line-height: 1.35; }
+    .panel-card small { display: block; margin-top: 5px; color: var(--muted); font: 10px/1.45 Menlo, monospace; }
+    .panel-match { min-height: 38px; margin: 9px 0 0; padding: 9px 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; background: #f5f7f6; font-size: 11px; line-height: 1.55; }
+    .panel-match[data-state="match"] { color: #08625f; border-color: rgba(8,126,122,.3); background: #edf8f6; }
+    .panel-match[data-state="mismatch"] { color: #8d2028; border-color: rgba(213,43,53,.32); background: #fff0f1; }
     .ota-field { margin-top: 16px; }
     .native-file { width: 100%; padding: 10px; border: 1px solid #cbd3d1; border-radius: 11px; background: var(--white); font-size: 12px; }
     .native-file::file-selector-button { margin-right: 10px; padding: 8px 10px; color: var(--graphite); border: 0; border-radius: 8px; background: #e9edeb; font-weight: 700; cursor: pointer; }
@@ -262,6 +289,7 @@
       .connect-row, .control-grid { grid-template-columns: 1fr; }
       .field.full { grid-column: auto; }
       .device-data { grid-template-columns: 1fr 1fr; }
+      .panel-options { grid-template-columns: 1fr; }
     }
     @media (max-width: 700px) {
       .topbar { position: static; min-height: 68px; padding: 12px 16px; }
@@ -458,6 +486,28 @@
               <div class="data-cell"><span>目标槽位</span><strong id="device-target">—</strong></div>
               <div class="data-cell"><span>恢复日志</span><strong id="device-journal">—</strong></div>
             </div>
+            <fieldset class="panel-picker">
+              <legend>目标屏幕型号（OTA 前必须选择）</legend>
+              <div class="panel-options">
+                <label class="panel-choice" for="ota-panel-a162">
+                  <input id="ota-panel-a162" name="ota-panel" type="radio" value="0x213a">
+                  <span class="panel-card">
+                    <span class="panel-code">FPC-A0 · 0x213A</span>
+                    <strong>HINK A162</strong>
+                    <small>HINK-E0213A162-FPC-A0</small>
+                  </span>
+                </label>
+                <label class="panel-choice" for="ota-panel-z98">
+                  <input id="ota-panel-z98" name="ota-panel" type="radio" value="0x2198">
+                  <span class="panel-card">
+                    <span class="panel-code">FPC-A002 · 0x2198</span>
+                    <strong>SSD1680 三色屏</strong>
+                    <small>GDEY0213Z98 / 同系列 OEM</small>
+                  </span>
+                </label>
+              </div>
+              <p id="ota-panel-match" class="panel-match" data-state="idle" role="status" aria-live="polite">先按屏幕排线丝印选择型号，再选择固件。</p>
+            </fieldset>
             <div class="ota-field">
               <label class="field-label" for="firmware">选择 HINK 固件（.bin）</label>
               <input id="firmware" class="native-file" type="file" accept=".bin,application/octet-stream" disabled>
@@ -493,7 +543,12 @@
   const CHARACTERISTIC = '4b646063-6264-f3a7-8941-e65356ea82fe';
   const OTA_SERVICE = '0000221f-0000-1000-8000-00805f9b34fb';
   const OTA_CHARACTERISTIC = '0000331f-0000-1000-8000-00805f9b34fb';
-  const OTA_PROTOCOL = 1, OTA_BOARD_ID = 0x213a, OTA_MAX_IMAGE = 0x1f000;
+  const OTA_PROTOCOL = 1, OTA_MAX_IMAGE = 0x1f000;
+  const OTA_PANEL_MODELS = new Map([
+    [0x213a, { short: 'HINK A162', detail: 'HINK-E0213A162-FPC-A0' }],
+    [0x2198, { short: 'SSD1680 三色屏', detail: 'FPC-A002 / GDEY0213Z98' }]
+  ]);
+  const OTA_BOARD_IDS = new Set(OTA_PANEL_MODELS.keys());
   const OTA_INFO = 0x10, OTA_BEGIN = 0x11, OTA_ERASE_NEXT = 0x12;
   const OTA_DATA = 0x13, OTA_FINISH = 0x14, OTA_ABORT = 0x16;
   const OTA_ARM_INSTALL = 0x17, OTA_INSTALL = 0x18;
@@ -536,6 +591,8 @@
   const deviceSlot = document.querySelector('#device-slot');
   const deviceTarget = document.querySelector('#device-target');
   const deviceJournal = document.querySelector('#device-journal');
+  const otaPanelInputs = [...document.querySelectorAll('input[name="ota-panel"]')];
+  const otaPanelMatch = document.querySelector('#ota-panel-match');
   let sourceImage = null;
   let rotation = 0;
   let device = null;
@@ -614,10 +671,45 @@
     deviceJournal.textContent = response.journalValid == null ? '—' : `${response.journalValid} / ${response.journalCorrupt}`;
   }
 
+  function selectedPanelBoardId() {
+    const selected = otaPanelInputs.find(input => input.checked);
+    return selected ? Number(selected.value) : null;
+  }
+
+  function panelDescription(boardId) {
+    const model = OTA_PANEL_MODELS.get(boardId);
+    return model ? `${model.short}（${model.detail}）` : `未知型号 0x${boardId.toString(16).toUpperCase().padStart(4, '0')}`;
+  }
+
+  function panelSelectionMatchesCandidate() {
+    const selectedBoardId = selectedPanelBoardId();
+    return selectedBoardId !== null && !!otaCandidate && otaCandidate.boardId === selectedBoardId;
+  }
+
+  function updatePanelMatch() {
+    const selectedBoardId = selectedPanelBoardId();
+    if (selectedBoardId === null) {
+      otaPanelMatch.dataset.state = otaCandidate ? 'mismatch' : 'idle';
+      otaPanelMatch.textContent = otaCandidate
+        ? `固件适配：${panelDescription(otaCandidate.boardId)}。请先确认目标屏幕型号。`
+        : '先按屏幕排线丝印选择型号，再选择固件。';
+    } else if (!otaCandidate) {
+      otaPanelMatch.dataset.state = 'idle';
+      otaPanelMatch.textContent = `当前目标：${panelDescription(selectedBoardId)}。请选择对应固件。`;
+    } else if (otaCandidate.boardId === selectedBoardId) {
+      otaPanelMatch.dataset.state = 'match';
+      otaPanelMatch.textContent = `型号匹配：目标屏幕和固件均为 ${panelDescription(selectedBoardId)}，可以上传校验。`;
+    } else {
+      otaPanelMatch.dataset.state = 'mismatch';
+      otaPanelMatch.textContent = `禁止上传：目标是 ${panelDescription(selectedBoardId)}，固件适配 ${panelDescription(otaCandidate.boardId)}。`;
+    }
+  }
+
   function updateOtaControls() {
     firmware.disabled = !otaSupported;
-    otaStage.disabled = !otaSupported || !firmware.files.length || !otaCandidate;
-    const installReady = !!(otaCapabilities & 1) && !!otaCandidate &&
+    const panelMatches = panelSelectionMatchesCandidate();
+    otaStage.disabled = !otaSupported || !firmware.files.length || !panelMatches;
+    const installReady = !!(otaCapabilities & 1) && panelMatches &&
       !!otaLastResponse && otaLastResponse.phase >= 3 && otaLastResponse.phase <= 5;
     otaInstallPanel.hidden = !(otaCapabilities & 1) || !otaCandidate ||
       !otaLastResponse || otaLastResponse.phase < 3;
@@ -638,6 +730,7 @@
     } else {
       otaInstallHint.textContent = '设备正在处理安装，请等待重启后重新连接并核对版本。';
     }
+    updatePanelMatch();
   }
 
   function drawPlaceholder() {
@@ -814,8 +907,9 @@
     if (image.length < 56) throw new Error('固件过短，缺少 Telink 头或 HINK 清单');
     const manifest = image.subarray(image.length - 24);
     const view = new DataView(manifest.buffer, manifest.byteOffset, manifest.byteLength);
+    const boardId = view.getUint16(6, true);
     if (String.fromCharCode(...manifest.subarray(0, 4)) !== 'HOTA' ||
-        manifest[4] !== 1 || manifest[5] !== 0 || view.getUint16(6, true) !== OTA_BOARD_ID)
+        manifest[4] !== 1 || manifest[5] !== 0 || !OTA_BOARD_IDS.has(boardId))
       throw new Error('HINK 固件清单格式或硬件型号不匹配');
     const payload = image.subarray(0, image.length - 24);
     if (view.getUint32(8, true) !== payload.length ||
@@ -829,7 +923,7 @@
     const nativeCrc = payloadView.getUint32(payload.length - 4, false);
     if (nativeCrc !== crc32(payload.subarray(0, payload.length - 4)))
       throw new Error('Telink 原生 CRC32 无效');
-    return { image, version: view.getUint32(16, true), crc32: crc32(image) };
+    return { image, boardId, version: view.getUint32(16, true), crc32: crc32(image) };
   }
 
   async function probeOta(server) {
@@ -961,6 +1055,7 @@
   connect.addEventListener('click', () => connectDevice(false));
   connectAll.addEventListener('click', () => connectDevice(true));
   disconnectBtn.addEventListener('click', disconnectDevice);
+  otaPanelInputs.forEach(input => input.addEventListener('change', updateOtaControls));
 
   firmware.addEventListener('change', async () => {
     otaProgress.value = 0;
@@ -972,7 +1067,7 @@
       const selected = firmware.files[0];
       try {
         otaCandidate = parseManifest(new Uint8Array(await selected.arrayBuffer()));
-        otaStatus.textContent = `已选择 ${selected.name}：候选版本 ${otaCandidate.version}，${selected.size.toLocaleString()} 字节，CRC32 ${otaCandidate.crc32.toString(16).padStart(8, '0').toUpperCase()}；尚未上传。`;
+        otaStatus.textContent = `已选择 ${selected.name}：板型 0x${otaCandidate.boardId.toString(16).toUpperCase().padStart(4, '0')}，候选版本 ${otaCandidate.version}，${selected.size.toLocaleString()} 字节，CRC32 ${otaCandidate.crc32.toString(16).padStart(8, '0').toUpperCase()}；尚未上传。`;
       } catch (error) {
         otaStatus.textContent = `不能使用这个固件：${error.message}`;
       }
@@ -982,7 +1077,7 @@
 
   otaStage.addEventListener('click', async () => {
     const selected = firmware.files[0];
-    if (!selected || !otaSupported) return;
+    if (!selected || !otaSupported || !panelSelectionMatchesCandidate()) return;
     resetIdleTimer();
     otaStage.disabled = true;
     send.disabled = test.disabled = clear.disabled = true;
@@ -997,8 +1092,8 @@
       const begin = new Uint8Array(12);
       begin[0] = OTA_BEGIN;
       begin[1] = OTA_PROTOCOL;
-      begin[2] = OTA_BOARD_ID & 0xff;
-      begin[3] = OTA_BOARD_ID >> 8;
+      begin[2] = otaCandidate.boardId & 0xff;
+      begin[3] = otaCandidate.boardId >> 8;
       putU32LE(begin, 4, image.length);
       putU32LE(begin, 8, imageCrc);
       let response = parseOtaResponse(await otaCommand(begin), OTA_BEGIN);
@@ -1048,7 +1143,7 @@
   otaPowerConfirm.addEventListener('change', updateOtaControls);
 
   otaArm.addEventListener('click', async () => {
-    if (!otaCandidate || !otaPowerConfirm.checked) return;
+    if (!otaCandidate || !otaPowerConfirm.checked || !panelSelectionMatchesCandidate()) return;
     resetIdleTimer();
     otaArm.disabled = true;
     try {
@@ -1066,7 +1161,7 @@
   });
 
   otaInstall.addEventListener('click', async () => {
-    if (!otaCandidate || !otaPowerConfirm.checked) return;
+    if (!otaCandidate || !otaPowerConfirm.checked || !panelSelectionMatchesCandidate()) return;
     resetIdleTimer();
     otaInstall.disabled = true;
     try {

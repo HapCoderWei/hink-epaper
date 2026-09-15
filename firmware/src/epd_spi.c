@@ -24,7 +24,12 @@ _attribute_ram_code_ void EPD_init(void)
     gpio_set_func(EPD_BUSY, AS_GPIO);
     gpio_set_output_en(EPD_BUSY, 0);
     gpio_set_input_en(EPD_BUSY, 1);
+#if HINK_PANEL_PROFILE == HINK_PANEL_GDEY0213Z98
+    /* The SSD1680 BUSY output is active high; do not bias its idle-low level. */
+    gpio_setup_up_down_resistor(EPD_BUSY, PM_PIN_UP_DOWN_FLOAT);
+#else
     gpio_setup_up_down_resistor(EPD_BUSY, PM_PIN_PULLUP_1M);
+#endif
 
     gpio_write(EPD_CS, 1);
     gpio_set_func(EPD_CS, AS_GPIO);

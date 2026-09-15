@@ -6,7 +6,13 @@
 #define EPD_ENABLE_WRITE_CMD() gpio_write(EPD_DC, 0)
 #define EPD_ENABLE_WRITE_DATA() gpio_write(EPD_DC, 1)
 
+#if HINK_PANEL_PROFILE == HINK_PANEL_GDEY0213Z98
+/* SSD1680/FPC-A002 drives BUSY high while an operation is in progress. */
+#define EPD_IS_BUSY() (!!gpio_read(EPD_BUSY))
+#else
+/* The verified HINK-E0213A162 panel drives BUSY low while operating. */
 #define EPD_IS_BUSY() (!gpio_read(EPD_BUSY))
+#endif
 
 
 void EPD_init(void);

@@ -10,7 +10,10 @@
 /* OTA v2, milestone M2-C: journal the guarded dual-slot install, confirm a
  * healthy trial boot, and restore the masked source sector after 3 failures. */
 #define OTA_V2_PROTOCOL_VERSION      1U
-#define OTA_V2_BOARD_ID              0x213AU
+#ifndef HINK_BOARD_ID
+#define HINK_BOARD_ID                0x213AU
+#endif
+#define OTA_V2_BOARD_ID              HINK_BOARD_ID
 #define OTA_V2_SLOT_A_START          0x00000UL
 #define OTA_V2_SLOT_B_START          0x20000UL
 #define OTA_V2_SLOT_SIZE             0x1F000UL
