@@ -2,10 +2,22 @@
   "version": 1,
   "images": [
     {
+      "id": "coca-cola-logo",
+      "file": "coca-cola-logo.png",
+      "title": "Coca-Cola · 红色版",
+      "category": "品牌标志"
+    },
+    {
       "id": "force-logo-red",
       "file": "force-logo-red.png",
       "title": "Force Logo · 红色版",
       "category": "标语"
+    },
+    {
+      "id": "pepsi-logo",
+      "file": "pepsi-logo.png",
+      "title": "Pepsi · 红色版",
+      "category": "品牌标志"
     }
   ]
 }

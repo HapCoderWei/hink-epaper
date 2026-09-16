@@ -11,7 +11,10 @@
   }
 
   function isRedHue(r, g, b) {
-    return r > 82 && r > g * 1.18 && r > b * 1.12 && r - g > 20;
+    /* Raised from r-g>20 to r-g>30 so that pink antialiasing fringes
+       (common around red logos on white backgrounds) are not eligible
+       for red dithering, preventing red freckles in white areas. */
+    return r > 82 && r > g * 1.18 && r > b * 1.12 && r - g > 30;
   }
 
   function luma(r, g, b) {
@@ -39,7 +42,9 @@
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i], g = data[i + 1], b = data[i + 2];
       let color;
-      if (r > 105 && r > g * 1.28 && r > b * 1.18) color = RED;
+      /* Require a visible saturation gap so pink antialiasing fringes
+         and light skin tones fall through to the luma path. */
+      if (r > 105 && r > g * 1.28 && r > b * 1.18 && r - g > 60) color = RED;
       else color = luma(r, g, b) < 145 ? BLACK : WHITE;
       data[i] = color[0];
       data[i + 1] = color[1];
@@ -131,6 +136,44 @@
     return imageData;
   }
 
+  /* Majority-vote downscale for quantized 3-color image data.
+     Each factor×factor block is classified by pixel count; ties broken
+     by priority: white > black > red (white is the dominant background
+     on e-paper tags and costs the least to "undo" if wrong). */
+  function downscaleByMajority(imageData, factor) {
+    const srcW = imageData.width, srcH = imageData.height;
+    const dstW = Math.floor(srcW / factor), dstH = Math.floor(srcH / factor);
+    const dst = new Uint8ClampedArray(dstW * dstH * 4);
+    const src = imageData.data;
+    for (let dy = 0; dy < dstH; dy++) {
+      for (let dx = 0; dx < dstW; dx++) {
+        let wCount = 0, bCount = 0, rCount = 0;
+        const x0 = dx * factor, y0 = dy * factor;
+        for (let iy = 0; iy < factor; iy++) {
+          for (let ix = 0; ix < factor; ix++) {
+            const p = ((y0 + iy) * srcW + (x0 + ix)) * 4;
+            const r = src[p], g = src[p + 1], b = src[p + 2];
+            if (r === 255 && g === 255 && b === 255) wCount++;
+            else if (r === 207 && g === 32 && b === 40) rCount++;
+            else bCount++;
+          }
+        }
+        const dp = (dy * dstW + dx) * 4;
+        let outColor;
+        if (bCount > wCount && bCount > rCount) outColor = BLACK;
+        else if (rCount > wCount && rCount > bCount) outColor = RED;
+        else if (wCount >= bCount && wCount >= rCount) outColor = WHITE;
+        else if (rCount >= bCount) outColor = RED;
+        else outColor = BLACK;
+        dst[dp] = outColor[0]; dst[dp + 1] = outColor[1];
+        dst[dp + 2] = outColor[2]; dst[dp + 3] = 255;
+      }
+    }
+    if (typeof ImageData !== 'undefined')
+      return new ImageData(dst, dstW, dstH);
+    return { width: dstW, height: dstH, data: dst };
+  }
+
   function calculatePlacement(sourceWidth, sourceHeight, targetWidth, targetHeight, fit, quarterTurns) {
     if (![sourceWidth, sourceHeight, targetWidth, targetHeight].every(value => value > 0))
       throw new RangeError('Image dimensions must be positive');
@@ -152,5 +195,5 @@
     };
   }
 
-  root.HinkImage = { quantizePixels, resolveMode, calculatePlacement };
+  root.HinkImage = { quantizePixels, resolveMode, calculatePlacement, downscaleByMajority };
 })(typeof globalThis !== 'undefined' ? globalThis : window);

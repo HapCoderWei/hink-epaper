@@ -25,7 +25,9 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 # ── Title mapping table ──────────────────────────────────────────────
 # New images must be registered here before they can be included.
 TITLE_MAP = {
+    "coca-cola-logo": {"title": "Coca-Cola · 红色版", "category": "品牌标志"},
     "force-logo-red": {"title": "Force Logo · 红色版", "category": "标语"},
+    "pepsi-logo": {"title": "Pepsi · 红色版", "category": "品牌标志"},
 }
 
 

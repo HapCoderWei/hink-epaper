@@ -146,7 +146,7 @@
     .device-stage::before { content: ""; position: absolute; inset: 18px; border: 1px solid rgba(255,255,255,.08); border-radius: 18px; pointer-events: none; }
     .device-shell {
       position: relative;
-      width: min(400px, 92%);
+      width: min(540px, 94%);
       padding: 20px 20px 28px;
       border: 1px solid #cfd4d2;
       border-radius: 18px;
@@ -155,7 +155,16 @@
     }
     .device-shell::before { content: "HINK · E0213"; display: block; margin-bottom: 10px; color: #687276; font: 700 9px/1 Menlo, monospace; letter-spacing: .1em; }
     .device-shell::after { content: ""; position: absolute; left: 50%; bottom: 10px; width: 34px; height: 3px; transform: translateX(-50%); border-radius: 999px; background: #b2b9b7; }
-    canvas { display: block; width: 100%; height: auto; aspect-ratio: 250 / 122; image-rendering: pixelated; background: #fff; border: 1px solid #aab1af; box-shadow: 0 2px 8px rgba(0,0,0,.16); }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 250 / 122;
+      image-rendering: auto;
+      background: #fff;
+      border: 1px solid #aab1af;
+      box-shadow: 0 2px 8px rgba(0,0,0,.16);
+    }
     .preview-caption { display: flex; justify-content: space-between; gap: 16px; padding: 16px 20px 18px; color: #aeb8ba; border-top: 1px solid rgba(255,255,255,.1); font-size: 12px; }
     .preview-caption strong { display: block; overflow: hidden; margin-bottom: 3px; color: var(--paper); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
     .preview-caption > div:first-child { min-width: 0; }
@@ -283,7 +292,8 @@
     .footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 26px; padding: 0 2px; color: var(--muted); font-size: 11px; }
     .footer a { color: inherit; text-underline-offset: 3px; }
     @media (max-width: 900px) {
-      .workspace { grid-template-columns: minmax(280px, 38%) minmax(0,1fr); }
+      .workspace { grid-template-columns: 1fr; }
+      .preview-panel { position: static; }
       .device-stage { min-height: 360px; }
       .spec-chip { display: none; }
       .connect-row, .control-grid { grid-template-columns: 1fr; }
@@ -300,10 +310,8 @@
       .intro { display: block; margin-bottom: 18px; }
       h1 { font-size: 34px; }
       .workflow-note { display: none; }
-      .workspace { grid-template-columns: 1fr; }
-      .preview-panel { position: static; }
       .device-stage { min-height: 260px; padding: 24px 18px; }
-      .device-shell { width: min(330px, 94%); padding: 13px 13px 21px; border-radius: 13px; }
+      .device-shell { width: min(540px, 94%); padding: 13px 13px 21px; border-radius: 13px; }
       .device-shell::before { margin-bottom: 7px; font-size: 7px; }
       .preview-caption { padding: 13px 16px 15px; }
       .card, details.ota, .preview-panel { border-radius: 17px; }
@@ -314,6 +322,60 @@
       .tools-body { grid-template-columns: 1fr; }
       .footer { display: block; line-height: 1.6; }
       .footer span { display: block; }
+    }
+    /* Art strip (gallery) */
+    .art-section { margin-top: 16px; }
+    .art-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+    .art-header-left { min-width: 0; }
+    .art-title { margin: 0; font-size: 13px; font-weight: 750; }
+    .art-desc { margin: 2px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .art-count { flex: 0 0 auto; color: var(--muted); font: 600 11px/1 Menlo, monospace; }
+    #art-strip {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      scroll-snap-type: x proximity;
+      padding: 4px 2px 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+    #art-strip::-webkit-scrollbar { height: 4px; }
+    #art-strip::-webkit-scrollbar-track { background: transparent; }
+    #art-strip::-webkit-scrollbar-thumb { background: #c8d0ce; border-radius: 999px; }
+    #art-strip { scrollbar-width: thin; scrollbar-color: #c8d0ce transparent; }
+    .art-item {
+      flex: 0 0 auto;
+      width: 150px;
+      scroll-snap-align: start;
+      border: 2px solid transparent;
+      border-radius: 10px;
+      background: var(--white);
+      cursor: pointer;
+      transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+      overflow: hidden;
+    }
+    .art-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(23,27,29,.08); }
+    .art-item[data-selected="true"] { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(8,126,122,.12); }
+    .art-item img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 250 / 122;
+      object-fit: contain;
+      background: var(--mineral);
+    }
+    .art-item .art-label {
+      display: block;
+      overflow: hidden;
+      padding: 6px 8px;
+      color: var(--graphite);
+      font-size: 11px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .art-item[data-loading="true"] { opacity: .55; pointer-events: none; }
+    .art-fallback-msg { margin: 0; color: var(--muted); font-size: 12px; padding: 8px 0; }
+    @media (max-width: 700px) {
+      .art-item { width: 120px; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -334,6 +396,7 @@
     <div class="topbar-meta">
       <span class="spec-chip">LANDSCAPE · 250 × 122</span>
       <a class="firmware-link" href="firmware.html">固件下载</a>
+      <a class="firmware-link" href="#art-strip">图集</a>
       <span id="connection-pill" class="connection-pill" data-state="disconnected">
         <i class="connection-dot" aria-hidden="true"></i>
         <span id="connection-label">未连接</span>
@@ -397,6 +460,16 @@
                 <strong>拖放图片到这里，或点击选择</strong>
                 <span>也可以直接粘贴剪贴板中的图片</span>
               </label>
+              <div class="art-section">
+                <div class="art-header">
+                  <div class="art-header-left">
+                    <p class="art-title">内置图集</p>
+                    <p class="art-desc">为这块价签提前适配好的图片，点一下直接载入预览</p>
+                  </div>
+                  <span class="art-count" id="art-count"></span>
+                </div>
+                <div id="art-strip" aria-live="polite">图集加载中…</div>
+              </div>
             </div>
           </div>
 
@@ -533,7 +606,7 @@
     </footer>
   </main>
 </div>
-<script src="image-processing.js?v=adaptive-2"></script>
+<script src="image-processing.js?v=adaptive-3"></script>
 <script>
 (() => {
   'use strict';
@@ -746,20 +819,29 @@
   function quantize() {
     if (!sourceImage) return;
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    /* 3× oversample: quantize at 750×366 then majority-vote downscale to
+       250×122. This suppresses single-pixel color speckles produced by
+       JPEG noise and pink antialiasing fringes at native resolution. */
+    const OS = 3, OS_W = WIDTH * OS, OS_H = HEIGHT * OS;
     const placement = HinkImage.calculatePlacement(
-      sourceImage.width, sourceImage.height, WIDTH, HEIGHT, fit.value, rotation);
-    ctx.save();
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.translate(WIDTH / 2, HEIGHT / 2);
-    ctx.rotate(placement.angle);
-    ctx.drawImage(sourceImage,
+      sourceImage.width, sourceImage.height, OS_W, OS_H, fit.value, rotation);
+    const offscreen = document.createElement('canvas');
+    offscreen.width = OS_W; offscreen.height = OS_H;
+    const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
+    offCtx.fillStyle = '#fff'; offCtx.fillRect(0, 0, OS_W, OS_H);
+    offCtx.save();
+    offCtx.imageSmoothingEnabled = true;
+    offCtx.imageSmoothingQuality = 'high';
+    offCtx.translate(OS_W / 2, OS_H / 2);
+    offCtx.rotate(placement.angle);
+    offCtx.drawImage(sourceImage,
       -placement.drawWidth / 2, -placement.drawHeight / 2,
       placement.drawWidth, placement.drawHeight);
-    ctx.restore();
-    const image = ctx.getImageData(0, 0, WIDTH, HEIGHT);
-    const resolvedMode = HinkImage.resolveMode(image, processing.value);
-    HinkImage.quantizePixels(image, resolvedMode);
+    offCtx.restore();
+    const hiRes = offCtx.getImageData(0, 0, OS_W, OS_H);
+    const resolvedMode = HinkImage.resolveMode(hiRes, processing.value);
+    HinkImage.quantizePixels(hiRes, resolvedMode);
+    const image = HinkImage.downscaleByMajority(hiRes, OS);
     ctx.putImageData(image, 0, 0);
     if (processing.value === 'auto') {
       processingStatus.textContent = resolvedMode === 'threshold'
@@ -1210,6 +1292,8 @@
   });
 
   function loadImageFile(selected) {
+    selectedArtId = null;
+    document.querySelectorAll('.art-item').forEach(function (el) { el.dataset.selected = 'false'; });
     if (!selected || !selected.type.startsWith('image/')) {
       setStatus('这个文件不是可识别的图片，请重新选择。');
       return;
@@ -1232,6 +1316,32 @@
     image.src = URL.createObjectURL(selected);
   }
 
+  // Shared helper: fetch a gallery entry's image and load it into the studio.
+  var selectedArtId = null;
+  function loadGalleryArt(entry) {
+    var card = document.querySelector('.art-item[data-id="' + entry.id + '"]');
+    if (card) card.dataset.loading = 'true';
+    return fetch('assets/gallery/' + entry.file)
+      .then(function (res) {
+        if (!res.ok) throw new Error('image fetch failed');
+        return res.blob();
+      })
+      .then(function (blob) {
+        var file = new File([blob], entry.title, { type: blob.type });
+        loadImageFile(file);
+        selectedArtId = entry.id;
+        document.querySelectorAll('.art-item').forEach(function (el) {
+          el.dataset.selected = el.dataset.id === entry.id ? 'true' : 'false';
+        });
+      })
+      .catch(function () {
+        setStatus('图集图片载入失败，请重试或直接选择本地图片。');
+      })
+      .finally(function () {
+        if (card) card.dataset.loading = 'false';
+      });
+  }
+
   // Deep link: ?art=<id> loads a gallery image into the studio.
   (function () {
     var artId = new URLSearchParams(location.search).get('art');
@@ -1247,18 +1357,68 @@
           setStatus('图集图片不存在或已下架。');
           return;
         }
-        return fetch('assets/gallery/' + entry.file)
-          .then(function (res) {
-            if (!res.ok) throw new Error('image fetch failed');
-            return res.blob();
-          })
-          .then(function (blob) {
-            var file = new File([blob], entry.file, { type: blob.type });
-            loadImageFile(file);
-          });
+        return loadGalleryArt(entry);
       })
       .catch(function () {
         setStatus('图集载入失败，请通过 HTTPS 页面重试，或直接选择本地图片。');
+      });
+  })();
+
+  // Art strip: render gallery cards into #art-strip.
+  (function () {
+    var strip = document.getElementById('art-strip');
+    var countEl = document.getElementById('art-count');
+    if (!strip) return;
+    fetch('assets/gallery/manifest.json')
+      .then(function (res) {
+        if (!res.ok) throw new Error('manifest fetch failed');
+        return res.json();
+      })
+      .then(function (manifest) {
+        var images = (manifest && manifest.images) || [];
+        if (!images.length) {
+          strip.innerHTML = '';
+          var p = document.createElement('p');
+          p.className = 'art-fallback-msg';
+          p.textContent = '图集暂不可用，可直接选择本地图片';
+          strip.appendChild(p);
+          return;
+        }
+        countEl.textContent = '共 ' + images.length + ' 张';
+        strip.innerHTML = '';
+        images.forEach(function (item) {
+          var card = document.createElement('div');
+          card.className = 'art-item';
+          card.dataset.id = item.id;
+          card.setAttribute('role', 'button');
+          card.setAttribute('tabindex', '0');
+          card.setAttribute('aria-label', '载入 ' + item.title);
+
+          var img = document.createElement('img');
+          img.loading = 'lazy';
+          img.src = 'assets/gallery/' + item.file;
+          img.alt = item.title;
+          img.draggable = false;
+
+          var label = document.createElement('span');
+          label.className = 'art-label';
+          label.textContent = item.title;
+
+          card.appendChild(img);
+          card.appendChild(label);
+          card.addEventListener('click', function () { loadGalleryArt(item); });
+          card.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadGalleryArt(item); }
+          });
+          strip.appendChild(card);
+        });
+      })
+      .catch(function () {
+        strip.innerHTML = '';
+        var p2 = document.createElement('p');
+        p2.className = 'art-fallback-msg';
+        p2.textContent = '图集暂不可用，可直接选择本地图片';
+        strip.appendChild(p2);
       });
   })();
 

@@ -94,5 +94,11 @@ assert(/assets\/gallery\/manifest\.json/.test(firmwareHtml), 'firmware page must
 assert(/index\.html\?art=/.test(firmwareHtml), 'firmware page cards must link to index.html?art=');
 assert(/URLSearchParams/.test(html), 'index.html must use URLSearchParams for art deep link');
 assert(/assets\/gallery\/manifest\.json/.test(html), 'index.html must fetch gallery manifest');
+assert(/id="art-strip"/.test(html), 'index.html must have art strip container');
+assert(/href="#art-strip"/.test(html), 'index.html topbar must have anchor link to art strip');
+assert(/image-rendering:\s*auto/.test(html), 'preview must use smooth browser scaling');
+assert(!/image-rendering:\s*pixelated/.test(html), 'preview must not force blocky pixel scaling');
+assert(/width:\s*min\(540px,\s*94%\)/.test(html), 'preview shell must stay inside its panel');
+assert(/image-processing\.js\?v=adaptive-3/.test(html), 'image processing cache key must match the current preview pipeline');
 
 console.log('PASS: web studio, curated firmware, SWire wiring, update procedures, safety gates, script syntax, and gallery.');

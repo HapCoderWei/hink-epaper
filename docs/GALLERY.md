@@ -1,6 +1,6 @@
 # 内置图集（Gallery）实施规范 · 终版
 
-方案日期：2026-09-15 · 状态：已实施并按第 7 节验收通过（2026-09-16），首批收录 `force-logo-red` 一张
+方案日期：2026-09-15 · 状态：已实施；2026-09-17 完成首页图集与预览质量更新，当前收录 `coca-cola-logo`、`force-logo-red`、`pepsi-logo` 三张
 
 本规范面向执行 Agent：按第 8 节顺序实施，逐项满足第 7 节验收标准。术语：「固件页」= `site/firmware.html`，「工作室」= `site/index.html`。
 
@@ -9,12 +9,12 @@
 | 项 | 决策 |
 |---|---|
 | 图集位置 | 固件页新增「图集」区块（`#gallery-art`），不放独立页 |
-| 工作室内嵌选择器 | 不做 |
+| 工作室内嵌选择器 | 已实现横向图集条，可点击或键盘载入，并显示选中/加载状态 |
 | 分类筛选器 | 不做，仅展示分类标签 |
 | 单图上限 / 总数上限 | 300 KiB / 24 张 |
-| 图片转换逻辑 | **不做**。图集图片一律视为已适配价签的成品：正确比例 + 高对比近三色，可直接发送 |
-| 预览方式 | 卡片直接 `<img>` 展示原图（图片本身即最终效果），不做浏览器端量化处理 |
-| 传图页处理管线 | 保持现状不变（工作室自身的 contain 适配 + 三色量化是发送路径的既有环节，对所有图片来源一视同仁） |
+| 图片转换逻辑 | 图集入库时不自动转换，图片必须是正确比例、高对比近三色的成品；工作室发送前仍统一执行三色量化 |
+| 预览方式 | 固件页和图集卡片直接 `<img>` 展示原图；工作室主预览展示量化后的真实输出画面 |
+| 传图页处理管线 | 本地图片、图集条和 `?art=<id>` 深链统一走 `loadImageFile`；三倍采样量化后以 3×3 多数票缩回 `250×122` |
 
 ## 2. 图片规范（项目方准备图片时必须满足）
 
@@ -34,8 +34,8 @@ site/
 ├── firmware.html                # 新增「图集」区块（#gallery-art）
 ├── firmware.js                  # 图集渲染（fetch 清单 + 建卡片）
 ├── firmware.css                 # 图集样式
-├── index.html                   # 新增 ?art=<id> 深链载入（仅此一处改动）
-└── image-processing.js          # 不动
+├── index.html                   # ?art=<id> 深链、内置图集条和预览处理
+└── image-processing.js          # 三色量化、适配计算和多数票缩图
 
 scripts/
 └── build-gallery.py             # 扫描 assets/gallery/ 生成/校验 manifest.json
@@ -47,8 +47,8 @@ tests/
 数据流：
 
 1. 项目方放图到 `site/assets/gallery/` → 运行 `python3 scripts/build-gallery.py` 重新生成 `manifest.json` → 提交 → GitHub Pages 自动部署。
-2. 访客在固件页图集区看到卡片（原图缩略 + 标题 + 分类），点击 → 跳转 `index.html?art=<id>`。
-3. 工作室启动时解析 `art` 参数 → 按清单取文件 → 走**现有 `loadImageFile` 入口**载入 → 预览、连接、发送流程与本地选图完全一致。
+2. 访客可以在固件页点击卡片跳转 `index.html?art=<id>`，也可以直接在工作室的横向图集条中选择。
+3. 两个入口都按清单取文件 → 走统一的 `loadImageFile` 入口载入 → 预览、连接、发送流程与本地选图完全一致。
 
 ## 4. `manifest.json` 格式
 
@@ -119,18 +119,27 @@ python3 scripts/build-gallery.py --check  # 校验（CI/测试用）
 - **CSP 红线**：固件页禁止内联脚本与内联样式；新 DOM 一律 `createElement` + `className`，样式只进 `firmware.css`。
 - 不引入 `image-processing.js`（预览不做量化）。
 
-### 6.2 深链载入（`site/index.html`）
+### 6.2 工作室图集与深链载入（`site/index.html`）
 
-唯一改动点：在页面既有 IIFE 内、`loadImageFile` 函数定义之后（该函数在文件约 1117 行，以实际代码为准）新增深链逻辑：
+页面在图片选择步骤中提供 `#art-strip` 横向图集，并保留 `?art=<id>` 可分享深链。两种入口共用 `loadGalleryArt`，再调用 `loadImageFile`：
 
 1. `new URLSearchParams(location.search).get('art')`；为空则什么都不做（现状不变）。
 2. fetch `assets/gallery/manifest.json` → 按 `id` 查表；找不到则 `setStatus('图集图片不存在或已下架。')` 并返回。
-3. fetch `assets/gallery/<file>` → `response.blob()` → `new File([blob], file, { type: blob.type })` → 调用现有 `loadImageFile(fileObject)`。此后预览文件名显示为图片文件名，旋转/适配/发送控件行为与本地选图一致。
+3. fetch `assets/gallery/<file>` → `response.blob()` → `new File([blob], title, { type: blob.type })` → 调用 `loadImageFile(fileObject)`。此后预览文件名显示清单标题，旋转/适配/发送控件行为与本地选图一致。
 4. 任一步 fetch 失败：`setStatus('图集载入失败，请通过 HTTPS 页面重试，或直接选择本地图片。')`，不影响占位图状态。
 5. 不做 `history.replaceState` 清参数（保留可转发链接）。
-6. 工作室其余逻辑（连接、OTA、空闲断开）一律不碰。
+6. 图集条卡片支持鼠标、Enter 和 Space；载入中禁止重复点击，成功后标记当前选中项；本地选图会清除图集选中状态。
+7. 工作室连接、OTA、空闲断开逻辑保持不变。
 
-### 6.3 样式（`site/firmware.css`）
+### 6.3 工作室预览质量
+
+- 输入先绘制到 `750×366` 离屏画布，在高分辨率下进行三色量化，再以 3×3 多数票缩回真实 `250×122` 输出。
+- 红色门控排除浅粉抗锯齿边缘，减少白底 Logo 周围的孤立红点，同时保留明显的暗红区域。
+- 页面展示层使用浏览器平滑缩放，不再强制 `image-rendering: pixelated`；这只改变网页观感，不改变发送缓冲。
+- 预览外壳为 `min(540px, 94%)`，避免在较窄桌面列和移动端越界裁切。
+- `image-processing.js` 的查询参数必须随不兼容修改递增；当前为 `adaptive-3`，避免旧缓存缺少新函数导致预览全白。
+
+### 6.4 固件页样式（`site/firmware.css`）
 
 新增 `.art-section / .art-grid / .art-card / .art-thumb / .art-meta` 等类，视觉语言沿用现有图库卡片（白底圆角卡片、顶部黑/白/红刻度条可用 `.screen-ruler` 同款渐变、mono 小字标签）。响应式：桌面 3–4 列网格，`≤940px` 两列，`≤660px` 单列。`image-rendering` 保持默认（不做像素化）。
 
@@ -157,7 +166,9 @@ python3 scripts/build-gallery.py --check  # 校验（CI/测试用）
 2. 点击卡片跳转 `index.html?art=force-logo-red`：预览区已载入该图，文件名显示正确；控制台无 CSP/资源错误。
 3. 清单损坏场景（临时把 manifest.json 改名）：固件页图集区显示静态提示句、页面其余部分正常；恢复文件后正常。
 4. 无效参数 `index.html?art=nope`：工作室保持占位图并提示「图集图片不存在或已下架。」。
-5. 工作室原有功能（本地选图、连接按钮存在性）未被深链改动破坏——由 `web_ui_test.js` 既有断言兜底。
+5. 工作室内直接选择三张图集图片，文件名、选中框、三色主预览和发送就绪状态正确。
+6. Force 等 `500×244` 成品与屏幕比例完全一致，“完整显示”和“铺满并裁切”结果相同；用不同比例的本地图片确认两种适配模式确实产生差异。
+7. 工作室原有功能（本地选图、连接按钮存在性）未被图集改动破坏——由 `web_ui_test.js` 既有断言兜底。
 
 ## 8. 实施顺序
 
@@ -177,4 +188,4 @@ python3 scripts/build-gallery.py --check  # 校验（CI/测试用）
 
 ## 9. 非目标（本期明确不做）
 
-访客上传、图集管理界面、分类筛选、工作室内嵌选择器、浏览器端图片转换/量化、深色模式适配、收藏与历史。
+图集管理后台、分类筛选、深色模式适配、收藏与历史。访客本地选图和浏览器端三色量化仍属于工作室既有功能，不会把图片上传到服务器。
