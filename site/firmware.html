@@ -14,7 +14,7 @@
     <nav class="shell nav" aria-label="主导航">
       <a class="brand" href="index.html"><i class="brand-mark" aria-hidden="true"></i><span><strong>HINK Community</strong><span>E-paper firmware</span></span></a>
       <div class="nav-links">
-        <a href="#firmware">固件</a><a href="#wiring">接线</a><a href="#first-flash">首次烧录</a><a href="#ota">OTA 更新</a><a class="studio-link" href="index.html">打开控制工具</a>
+        <a href="#firmware">固件</a><a href="#wiring">接线</a><a href="#first-flash">首次烧录</a><a href="#ota">OTA 更新</a><a href="#gallery-art">图集</a><a class="studio-link" href="index.html">打开控制工具</a>
       </div>
     </nav>
   </header>
@@ -177,6 +177,16 @@
             <p>当前没有固件签名或身份认证，只在可信的近距离 BLE 环境使用。候选固件若损坏到无法执行早期恢复代码，仍可能需要 SWire。</p>
           </aside>
         </div>
+      </div>
+    </section>
+
+    <section id="gallery-art" class="shell section art-section">
+      <div class="section-head">
+        <div><p class="section-label">BUILT-IN ART</p><h2>内置图集</h2></div>
+        <p>为这块价签提前适配好的图片，效果即所见。点开任意一张进入传图工具，连接价签即可发送。</p>
+      </div>
+      <div id="art-grid" class="art-grid" aria-live="polite" data-manifest="assets/gallery/manifest.json" data-link-prefix="index.html?art=">
+        <p class="art-loading">图集加载中…（若长时间无内容，请确认通过 HTTPS 页面访问）</p>
       </div>
     </section>
 

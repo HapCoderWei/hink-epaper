@@ -70,10 +70,12 @@
 
 ## 页面与测试文件
 
-- `site/firmware.html`：可直接分享的单一推荐固件、接线图、首次烧录和 OTA 更新说明页。
+- `site/firmware.html`：可直接分享的单一推荐固件、接线图、首次烧录、OTA 更新说明页和内置图集。
 - `site/firmware.css`：独立的响应式电子纸视觉样式与接线图样式。
 - `site/assets/firmware/`：适配价签正反面、P6 引脚实物图和刷机后显示效果。
-- `site/index.html`：传图与 OTA 工具，顶部和固件维护区都链接到分享页。
-- `tests/web_ui_test.js`：检查两个页面的关键入口、唯一固件、接线关系、安全提示和 JavaScript 语法。
+- `site/assets/gallery/`：内置图集图片与机器生成的 `manifest.json`；收录与校验用 `scripts/build-gallery.py`，规范见 [内置图集技术方案](GALLERY.md)。
+- `site/index.html`：传图与 OTA 工具，顶部和固件维护区都链接到分享页，支持 `?art=<id>` 图集深链。
+- `tests/web_ui_test.js`：检查两个页面的关键入口、唯一固件、接线关系、安全提示、图集区块和 JavaScript 语法。
+- `tests/gallery_manifest_test.py`：校验图集清单与图片文件的一致性（无缺失、无孤儿）。
 
 固件分享页只说明首次 SWire 烧录所需的硬件连接、安全条件和操作顺序，不在浏览器中实现烧录器控制。使用者自行准备兼容 TLSRPGM 工具；设备成功运行 HINK 固件后，才使用网页完成蓝牙传图和 OTA。

@@ -70,6 +70,61 @@
     });
   });
 
+  // Gallery: fetch manifest.json and render art cards.
+  var artGrid = document.getElementById('art-grid');
+  if (artGrid) {
+    var FALLBACK_MSG = '内置图集暂时不可用，可直接打开传图工具上传自己的图片。';
+    function showFallback() {
+      artGrid.innerHTML = '';
+      var p = document.createElement('p');
+      p.className = 'art-fallback';
+      p.textContent = FALLBACK_MSG;
+      artGrid.appendChild(p);
+    }
+
+    fetch(artGrid.getAttribute('data-manifest') || 'assets/gallery/manifest.json')
+      .then(function (res) {
+        if (!res.ok) throw new Error('fetch failed');
+        return res.json();
+      })
+      .then(function (manifest) {
+        if (!manifest || !Array.isArray(manifest.images) || manifest.images.length === 0) {
+          showFallback();
+          return;
+        }
+        artGrid.innerHTML = '';
+        manifest.images.forEach(function (item) {
+          var card = document.createElement('a');
+          card.className = 'art-card';
+          var linkPrefix = artGrid.getAttribute('data-link-prefix') || 'index.html?art=';
+          card.href = linkPrefix + encodeURIComponent(item.id);
+
+          var thumb = document.createElement('div');
+          thumb.className = 'art-thumb';
+          var img = document.createElement('img');
+          img.loading = 'lazy';
+          img.src = 'assets/gallery/' + item.file;
+          img.alt = item.title;
+          thumb.appendChild(img);
+
+          var meta = document.createElement('div');
+          meta.className = 'art-meta';
+          var title = document.createElement('strong');
+          title.textContent = item.title;
+          var cat = document.createElement('span');
+          cat.className = 'art-cat';
+          cat.textContent = item.category;
+          meta.appendChild(title);
+          meta.appendChild(cat);
+
+          card.appendChild(thumb);
+          card.appendChild(meta);
+          artGrid.appendChild(card);
+        });
+      })
+      .catch(showFallback);
+  }
+
   // Lightbox for zoomable images.
   var zoomImgs = document.querySelectorAll('img[data-zoom]');
   if (zoomImgs.length) {

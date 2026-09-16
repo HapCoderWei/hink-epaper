@@ -88,4 +88,11 @@ const firmwareNames = [...firmwareHtml.matchAll(/HINK_E0213A162_Community_[A-Za-
 assert.deepStrictEqual([...new Set(firmwareNames)], ['HINK_E0213A162_Community_v1.0.0.bin'],
   'public page must contain exactly one curated firmware filename');
 
-console.log('PASS: web studio, curated firmware, SWire wiring, update procedures, safety gates, and script syntax.');
+// Gallery assertions
+assert(/id="gallery-art"/.test(firmwareHtml), 'firmware page must have gallery-art section');
+assert(/assets\/gallery\/manifest\.json/.test(firmwareHtml), 'firmware page must reference gallery manifest');
+assert(/index\.html\?art=/.test(firmwareHtml), 'firmware page cards must link to index.html?art=');
+assert(/URLSearchParams/.test(html), 'index.html must use URLSearchParams for art deep link');
+assert(/assets\/gallery\/manifest\.json/.test(html), 'index.html must fetch gallery manifest');
+
+console.log('PASS: web studio, curated firmware, SWire wiring, update procedures, safety gates, script syntax, and gallery.');

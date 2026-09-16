@@ -4,9 +4,11 @@
 
 固件分享页：<https://hapcoderwei.github.io/hink-epaper/firmware.html>
 
-固件分享页是面向爱好者的统一入口，目前只展示 **HINK E-Paper Community v1.0.0**（设备内部版本 v19）。页面包含适配设备的正反面与改造效果照片、P6 实物引脚、SHA-256、TLSR 烧录器接线、首次烧录步骤和 OTA 更新步骤；开发中间镜像不会出现在该页面。维护方法见[固件发布流程](FIRMWARE_RELEASES.md)。
+固件分享页是面向爱好者的统一入口，目前只展示 **HINK E-Paper Community v1.0.0**（设备内部版本 v19）。页面包含适配设备的正反面与改造效果照片、P6 实物引脚、SHA-256、TLSR 烧录器接线、首次烧录步骤、OTA 更新步骤和内置图集；开发中间镜像不会出现在该页面。维护方法见[固件发布流程](FIRMWARE_RELEASES.md)。
 
 两个页面的用途不同：原厂价签首次接管仍需使用 TLSRPGM 烧录器和 SWire，网页不直接控制烧录器；成功刷入 HINK 固件后，传图与 OTA 工具才通过 Web Bluetooth 工作。正常 OTA 不需要保持烧录器连接。
+
+固件页的「内置图集」展示项目方提前适配好价签分辨率（250:122）的成品图，卡片直出原图即最终效果。点击卡片跳转 `index.html?art=<id>`，传图工具按清单载入该图并走与本地选图相同的处理与发送路径；清单由 `scripts/build-gallery.py` 生成，收录规范见 [内置图集技术方案](GALLERY.md)。
 
 `site/index.html` 是单文件纯前端，没有接口、数据库、外部 JS 或密钥。文件选择、缩放/裁切、三色量化在浏览器 Canvas 内完成，然后通过本机蓝牙发送；不会将选择的图片上传到 GitHub。GitHub 仍会接收到加载网页的普通 HTTP 请求。
 

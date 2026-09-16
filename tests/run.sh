@@ -20,6 +20,7 @@ cc -std=c99 -Wall -Wextra -Werror -I "$source_dir/src" \
   -o "$test_dir/ota_recovery_test"
 "$test_dir/ota_recovery_test"
 python3 "$root/tests/ota_manifest_test.py"
+python3 "$root/tests/gallery_manifest_test.py"
 node "$root/tests/image_processing_test.js"
 node "$root/tests/web_ui_test.js"
 printf 'Generated test files retained at %s\n' "$test_dir"

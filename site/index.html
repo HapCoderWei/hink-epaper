@@ -1232,6 +1232,36 @@
     image.src = URL.createObjectURL(selected);
   }
 
+  // Deep link: ?art=<id> loads a gallery image into the studio.
+  (function () {
+    var artId = new URLSearchParams(location.search).get('art');
+    if (!artId) return;
+    fetch('assets/gallery/manifest.json')
+      .then(function (res) {
+        if (!res.ok) throw new Error('manifest fetch failed');
+        return res.json();
+      })
+      .then(function (manifest) {
+        var entry = (manifest.images || []).find(function (img) { return img.id === artId; });
+        if (!entry) {
+          setStatus('图集图片不存在或已下架。');
+          return;
+        }
+        return fetch('assets/gallery/' + entry.file)
+          .then(function (res) {
+            if (!res.ok) throw new Error('image fetch failed');
+            return res.blob();
+          })
+          .then(function (blob) {
+            var file = new File([blob], entry.file, { type: blob.type });
+            loadImageFile(file);
+          });
+      })
+      .catch(function () {
+        setStatus('图集载入失败，请通过 HTTPS 页面重试，或直接选择本地图片。');
+      });
+  })();
+
   file.addEventListener('change', () => loadImageFile(file.files[0]));
   ['dragenter', 'dragover'].forEach(type => imageDrop.addEventListener(type, event => {
     event.preventDefault();

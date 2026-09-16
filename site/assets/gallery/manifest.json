@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "images": [
+    {
+      "id": "force-logo-red",
+      "file": "force-logo-red.png",
+      "title": "Force Logo · 红色版",
+      "category": "标语"
+    }
+  ]
+}
