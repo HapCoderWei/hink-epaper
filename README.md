@@ -2,7 +2,7 @@
 
 TLSR8359F512ET32 价签固件：支持 HINK-E0213A162-FPC-A0，以及实验支持的 FPC-A002 / SSD1680 三色屏；提供 BLE 无线传图、黑白红三色刷新、低功耗运行和 OTA v2 M2 双槽更新。
 
-**在线入口：[打开 HINK 网页传图](https://hapcoderwei.github.io/hink-epaper/) · [下载固件与查看更新说明](https://hapcoderwei.github.io/hink-epaper/firmware.html)**
+**在线入口：[打开 HINK 网页传图](https://hapcoderwei.github.io/hink-epaper/) · [下载固件与查看更新说明](https://hapcoderwei.github.io/hink-epaper/firmware.html) · [图集制作器](https://hapcoderwei.github.io/hink-epaper/gallery-maker.html)**
 
 ## 固件分享与使用入口
 
@@ -11,6 +11,7 @@ TLSR8359F512ET32 价签固件：支持 HINK-E0213A162-FPC-A0，以及实验支�
 - **首次接管原厂价签：**使用 TLSRPGM 烧录器，通过 SWire 从 `0x000000` 写入固件。网页不负责首次烧录；动手者按分享页接线，并自行使用兼容烧录工具完成备份、写入和读回校验。
 - **刷入 HINK 固件以后：**使用 [网页传图与 OTA 工具](https://hapcoderwei.github.io/hink-epaper/)连接附近价签，完成蓝牙传图或后续 OTA 更新，正常使用无需连接烧录器。
 - **没有合适图片时：**固件页的「内置图集」提供提前适配好价签分辨率的成品图，点开任意一张直接进入传图工具预载该图，连接价签即可发送；收录方式见 [内置图集技术方案](docs/GALLERY.md)。
+- **想自己做图时：**使用 [图集制作器](https://hapcoderwei.github.io/hink-epaper/gallery-maker.html) 上传图片、调整构图、预览三色效果，导出 `500×244` 成品 PNG。
 
 网页是纯前端，图片在浏览器内处理，通过本机蓝牙直达附近价签，不需要业务后端。推荐使用 Mac Chrome 打开 HTTPS 页面；完整刷新后主动断开，避免持续连接耗电。详见 [网页使用说明](docs/WEB.md)和[固件分享与发布说明](docs/FIRMWARE_RELEASES.md)。
 
@@ -53,6 +54,7 @@ TLSR8359F512ET32 价签固件：支持 HINK-E0213A162-FPC-A0，以及实验支�
 - [固件分享页与 GitHub Release 发布流程](docs/FIRMWARE_RELEASES.md)
 - [内置图集技术方案](docs/GALLERY.md)
 - [图集图片生成规范](docs/IMAGE_GENERATION_RULES.md)
+- 网页图集制作器：`site/gallery-maker.html`（[使用说明](docs/WEB.md)）
 - [BLE OTA 状态与风险审计](docs/OTA_STATUS.md)
 - [OTA v2 里程碑与分阶段实施方案](docs/MILESTONE_OTA_V2.md)
 - [OTA v2 M1 双启动槽实施与新对话交接方案](docs/MILESTONE_OTA_V2_M1.md)

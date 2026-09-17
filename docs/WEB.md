@@ -4,11 +4,15 @@
 
 固件分享页：<https://hapcoderwei.github.io/hink-epaper/firmware.html>
 
+图集制作器：<https://hapcoderwei.github.io/hink-epaper/gallery-maker.html>
+
 固件分享页是面向爱好者的统一入口，目前只展示 **HINK E-Paper Community v1.0.0**（设备内部版本 v19）。页面包含适配设备的正反面与改造效果照片、P6 实物引脚、SHA-256、TLSR 烧录器接线、首次烧录步骤、OTA 更新步骤和内置图集；开发中间镜像不会出现在该页面。维护方法见[固件发布流程](FIRMWARE_RELEASES.md)。
 
 两个页面的用途不同：原厂价签首次接管仍需使用 TLSRPGM 烧录器和 SWire，网页不直接控制烧录器；成功刷入 HINK 固件后，传图与 OTA 工具才通过 Web Bluetooth 工作。正常 OTA 不需要保持烧录器连接。
 
 固件页和传图工作室都提供「内置图集」，展示项目方提前适配好价签分辨率（250:122）的成品图。固件页点击卡片跳转 `index.html?art=<id>`；工作室可以在横向图集条中直接载入。两种入口都走与本地选图相同的处理和发送路径；清单由 `scripts/build-gallery.py` 生成，收录规范见 [内置图集技术方案](GALLERY.md)。
+
+图集制作器（`gallery-maker.html`）是一个独立的图片处理工具页面，面向所有访客。上传图片后可调整构图（contain/cover、缩放、位置、旋转），查看 `250×122` 三色设备真实预览，并导出符合图集规范的 `500×244` RGB PNG。所有处理在浏览器内完成，图片不会上传到服务器。在支持 File System Access API 的桌面 Chromium 浏览器中，维护者可以选择本地 `site/assets/gallery/` 目录，直接保存图片并自动更新 `catalog.json` 和 `manifest.json`。
 
 站点是纯前端，没有接口、数据库、第三方 JS 或密钥。文件选择、缩放/裁切、三色量化在浏览器 Canvas 内完成，然后通过本机蓝牙发送；不会将选择的图片上传到 GitHub。GitHub 仍会接收到加载网页的普通 HTTP 请求。
 

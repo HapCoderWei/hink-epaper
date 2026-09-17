@@ -1,6 +1,6 @@
 # 内置图集（Gallery）实施规范 · 终版
 
-方案日期：2026-09-15 · 状态：已实施；2026-09-17 完成首页图集与预览质量更新，当前收录 `coca-cola-logo`、`force-logo-red`、`pepsi-logo` 三张
+方案日期：2026-09-15 · 状态：已实施；2026-09-17 完成首页图集与预览质量更新，当前收录 `coca-cola-logo`、`force-logo-red`、`pepsi-logo` 三张；2026-09-18 新增图集制作器页面，`TITLE_MAP` 迁移至 `catalog.json`
 
 本规范面向执行 Agent：按第 8 节顺序实施，逐项满足第 7 节验收标准。术语：「固件页」= `site/firmware.html`，「工作室」= `site/index.html`。
 
@@ -29,16 +29,20 @@
 site/
 ├── assets/
 │   └── gallery/                 # 项目方图片 + 机器生成清单
+│       ├── catalog.json         # 标题和分类的可编辑数据源
 │       ├── manifest.json        # build-gallery.py 生成，禁止手改
 │       └── <slug>.jpg|png       # 已适配图片
 ├── firmware.html                # 新增「图集」区块（#gallery-art）
 ├── firmware.js                  # 图集渲染（fetch 清单 + 建卡片）
 ├── firmware.css                 # 图集样式
 ├── index.html                   # ?art=<id> 深链、内置图集条和预览处理
+├── gallery-maker.html           # 图集制作器页面
+├── gallery-maker.css            # 图集制作器样式
+├── gallery-maker.js             # 图集制作器逻辑
 └── image-processing.js          # 三色量化、适配计算和多数票缩图
 
 scripts/
-└── build-gallery.py             # 扫描 assets/gallery/ 生成/校验 manifest.json
+└── build-gallery.py             # 扫描 assets/gallery/ 和 catalog.json 生成/校验 manifest.json
 
 tests/
 └── gallery_manifest_test.py     # 清单一致性回归（接入 tests/run.sh）
@@ -46,9 +50,10 @@ tests/
 
 数据流：
 
-1. 项目方放图到 `site/assets/gallery/` → 运行 `python3 scripts/build-gallery.py` 重新生成 `manifest.json` → 提交 → GitHub Pages 自动部署。
+1. 项目方放图到 `site/assets/gallery/` → 在 `catalog.json` 中登记标题和分类 → 运行 `python3 scripts/build-gallery.py` 重新生成 `manifest.json` → 提交 → GitHub Pages 自动部署。
 2. 访客可以在固件页点击卡片跳转 `index.html?art=<id>`，也可以直接在工作室的横向图集条中选择。
 3. 两个入口都按清单取文件 → 走统一的 `loadImageFile` 入口载入 → 预览、连接、发送流程与本地选图完全一致。
+4. 维护者也可以使用 [图集制作器](../site/gallery-maker.html) 上传图片、调整构图、预览三色效果，并通过 File System Access API 直接保存到本地 `site/assets/gallery/` 目录，自动更新 `catalog.json` 和 `manifest.json`。
 
 ## 4. `manifest.json` 格式
 
@@ -70,7 +75,23 @@ tests/
 
 - `id` = 文件名去扩展名；只允许 `[a-z0-9-]`，必须唯一。
 - `file` 必须与 `id` 对应的真实文件名一致，且文件存在于同目录。
-- `title`/`category` 来自脚本内置的标题映射表（见 5.3），不手改 JSON。
+- `title`/`category` 来自 `catalog.json`（见 5.2），不手改 JSON。
+
+## 4.1 `catalog.json` 格式
+
+```json
+{
+  "version": 1,
+  "images": {
+    "force-logo-red": {
+      "title": "Force Logo · 红色版",
+      "category": "标语"
+    }
+  }
+}
+```
+
+`catalog.json` 是标题和分类的可编辑数据源。`build-gallery.py` 和图集制作器都从这里读取元数据。新增图片时在此处登记，然后运行脚本重新生成 `manifest.json`。
 
 ## 5. `scripts/build-gallery.py` 规格
 
@@ -84,9 +105,9 @@ Python 3 标准库实现，零依赖（对齐 `firmware/tools/ota_manifest.py` �
 - 生成 `manifest.json`（字段见第 4 节，键序稳定、`json.dumps(..., ensure_ascii=False, indent=2)` + 末尾换行），重复运行输出字节一致（幂等）。
 - 默认模式写文件；`--check` 模式只校验不写盘，退出码非零即失败。
 
-### 5.2 标题映射表（脚本内置常量）
+### 5.2 标题映射（`catalog.json`）
 
-文件名 slug → `{title, category}` 的 dict。新图片入库时项目方在此表加一行；表里没有的 slug 报错退出（防止"放了图忘了登记"）。
+标题和分类数据从 `site/assets/gallery/catalog.json` 读取，格式见第 4.1 节。新图片入库时项目方在 `catalog.json` 加一条；文件中没有的 slug 报错退出（防止"放了图忘了登记"）。图集制作器保存时也会自动更新此文件。
 
 ### 5.3 命令
 

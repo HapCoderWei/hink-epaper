@@ -6,7 +6,7 @@ Usage:
     python3 scripts/build-gallery.py --check   # verify only (exit non-zero on failure)
 """
 import json
-import os
+import re
 import struct
 import sys
 from pathlib import Path
@@ -14,21 +14,43 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 GALLERY_DIR = ROOT / "site" / "assets" / "gallery"
 MANIFEST_PATH = GALLERY_DIR / "manifest.json"
+CATALOG_PATH = GALLERY_DIR / "catalog.json"
 
 MAX_SIZE = 300 * 1024  # 300 KiB
 MAX_IMAGES = 24
 ASPECT_TARGET = 250 / 122
 ASPECT_TOLERANCE = 0.01
-VALID_SLUG = set("abcdefghijklmnopqrstuvwxyz0123456789-")
+VALID_SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 
-# ── Title mapping table ──────────────────────────────────────────────
-# New images must be registered here before they can be included.
-TITLE_MAP = {
-    "coca-cola-logo": {"title": "Coca-Cola · 红色版", "category": "品牌标志"},
-    "force-logo-red": {"title": "Force Logo · 红色版", "category": "标语"},
-    "pepsi-logo": {"title": "Pepsi · 红色版", "category": "品牌标志"},
-}
+
+def load_catalog():
+    """Load title/category mapping from catalog.json."""
+    if not CATALOG_PATH.exists():
+        print(f"Error: catalog.json not found at {CATALOG_PATH}.", file=sys.stderr)
+        sys.exit(1)
+    catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    if not isinstance(catalog, dict) or catalog.get("version") != 1:
+        print("Error: catalog.json must have version 1.", file=sys.stderr)
+        sys.exit(1)
+    images = catalog.get("images")
+    if not isinstance(images, dict):
+        print("Error: catalog.json 'images' must be an object.", file=sys.stderr)
+        sys.exit(1)
+    for slug, info in images.items():
+        if not VALID_SLUG_RE.fullmatch(slug):
+            print(f"Error: invalid slug '{slug}' in catalog.json.", file=sys.stderr)
+            sys.exit(1)
+        if not isinstance(info, dict) or "title" not in info or "category" not in info:
+            print(f"Error: catalog entry '{slug}' must have 'title' and 'category'.", file=sys.stderr)
+            sys.exit(1)
+        if not isinstance(info["title"], str) or not info["title"].strip():
+            print(f"Error: catalog entry '{slug}' must have a non-empty title.", file=sys.stderr)
+            sys.exit(1)
+        if not isinstance(info["category"], str) or not info["category"].strip():
+            print(f"Error: catalog entry '{slug}' must have a non-empty category.", file=sys.stderr)
+            sys.exit(1)
+    return images
 
 
 def read_png_dimensions(data: bytes):
@@ -90,7 +112,7 @@ def collect_images():
     return images
 
 
-def validate(images):
+def validate(images, catalog):
     """Validate all images; return list of (id, file, title, category) or exit on error."""
     if len(images) > MAX_IMAGES:
         print(f"Error: {len(images)} images found, maximum is {MAX_IMAGES}.", file=sys.stderr)
@@ -102,7 +124,7 @@ def validate(images):
     for path in images:
         slug = path.stem
         # Slug format
-        if not all(c in VALID_SLUG for c in slug):
+        if not VALID_SLUG_RE.fullmatch(slug):
             print(f"Error: invalid slug '{slug}' in {path.name}; only [a-z0-9-] allowed.", file=sys.stderr)
             sys.exit(1)
         if slug in seen_ids:
@@ -131,18 +153,26 @@ def validate(images):
             )
             sys.exit(1)
 
-        # Title mapping
-        if slug not in TITLE_MAP:
-            print(f"Error: slug '{slug}' not found in TITLE_MAP; register it before including.", file=sys.stderr)
+        # Title mapping from catalog
+        if slug not in catalog:
+            print(f"Error: slug '{slug}' not found in catalog.json; register it before including.", file=sys.stderr)
             sys.exit(1)
 
-        info = TITLE_MAP[slug]
+        info = catalog[slug]
         entries.append({
             "id": slug,
             "file": path.name,
             "title": info["title"],
             "category": info["category"],
         })
+
+    missing_files = sorted(set(catalog) - seen_ids)
+    if missing_files:
+        print(
+            "Error: catalog.json references missing image file(s): " + ", ".join(missing_files),
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     return entries
 
@@ -154,8 +184,9 @@ def build_manifest(entries):
 def main():
     check_mode = "--check" in sys.argv
 
+    catalog = load_catalog()
     images = collect_images()
-    entries = validate(images)
+    entries = validate(images, catalog)
     manifest = build_manifest(entries)
 
     if check_mode:

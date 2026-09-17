@@ -101,4 +101,8 @@ assert(!/image-rendering:\s*pixelated/.test(html), 'preview must not force block
 assert(/width:\s*min\(540px,\s*94%\)/.test(html), 'preview shell must stay inside its panel');
 assert(/image-processing\.js\?v=adaptive-3/.test(html), 'image processing cache key must match the current preview pipeline');
 
-console.log('PASS: web studio, curated firmware, SWire wiring, update procedures, safety gates, script syntax, and gallery.');
+// Gallery-maker navigation
+assert(/href="gallery-maker\.html"/.test(html), 'index.html must link to gallery-maker.html');
+assert(/href="gallery-maker\.html"/.test(firmwareHtml), 'firmware.html must link to gallery-maker.html');
+
+console.log('PASS: web studio, curated firmware, SWire wiring, update procedures, safety gates, script syntax, gallery, and gallery-maker navigation.');

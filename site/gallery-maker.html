@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="HINK 图集制作器：上传图片，调整构图，查看 250×122 三色电子纸预览，导出 500×244 RGB PNG。所有处理在浏览器内完成。">
+  <meta name="theme-color" content="#171b1d">
+  <title>HINK Gallery Maker · 图集制作器</title>
+  <link rel="stylesheet" href="gallery-maker.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div class="brand-copy">
+      <p class="brand-name">HINK Control Studio</p>
+      <p class="brand-subtitle">Gallery Maker</p>
+    </div>
+  </a>
+  <div class="topbar-meta">
+    <a class="nav-link" href="index.html">控制工作室</a>
+    <a class="nav-link" href="firmware.html">固件下载</a>
+    <span class="nav-link active" aria-current="page">图片制作</span>
+  </div>
+</header>
+
+<main>
+  <div class="page-header">
+    <p class="eyebrow">Gallery Maker</p>
+    <h1>把图片变成电子纸画面</h1>
+    <p class="lead">上传、调整并确认黑白红结果，图片不会离开当前浏览器。</p>
+  </div>
+
+  <div class="workspace">
+    <!-- Left: canvas + preview -->
+    <div class="preview-stack">
+      <!-- Edit canvas -->
+      <section class="canvas-panel" aria-labelledby="canvas-title">
+        <div class="canvas-head">
+          <p id="canvas-title" class="canvas-head-label">500 × 244 输出预览</p>
+          <span class="canvas-head-size mono" id="output-size">— KiB</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="edit-canvas" width="500" height="244" aria-label="编辑画布，显示输出效果"></canvas>
+        </div>
+        <div class="canvas-foot">
+          <span id="status-bar" class="status-bar" role="status" aria-live="polite">
+            <i class="dot" aria-hidden="true"></i>
+            <span id="status-text">拖放、粘贴或选择一张图片开始。</span>
+          </span>
+          <div class="swatches" aria-label="电子纸色板">
+            <span><i class="swatch-white"></i>白</span>
+            <span><i class="swatch-black"></i>黑</span>
+            <span><i class="swatch-red"></i>红</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Device preview -->
+      <section class="preview-panel" aria-labelledby="preview-title">
+        <div class="preview-head">
+          <p id="preview-title" class="preview-head-label">价签真实预览 · 250 × 122</p>
+          <span class="palette-rail" aria-label="白、黑、红三色"><i></i><i></i><i></i></span>
+        </div>
+        <div class="device-stage">
+          <div class="device-shell">
+            <canvas id="preview-canvas" width="250" height="122" aria-label="250×122 三色电子纸预览"></canvas>
+          </div>
+        </div>
+        <div class="preview-caption">
+          <div class="color-stats">
+            <span class="color-stat w" id="color-white">白 0%</span>
+            <span class="color-stat b" id="color-black">黑 0%</span>
+            <span class="color-stat r" id="color-red">红 0%</span>
+          </div>
+          <div class="mono"><strong>250 × 122</strong><span>DEVICE VIEW</span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Right: controls -->
+    <div class="control-stack">
+      <!-- Upload -->
+      <section class="card" aria-labelledby="upload-title">
+        <div class="card-titlebar">
+          <div><h2 id="upload-title">选择图片</h2><p>支持 JPG、PNG、WebP</p></div>
+        </div>
+        <div class="card-body">
+          <label id="drop-zone" class="file-drop" for="file-input" tabindex="0">
+            <input id="file-input" type="file" accept="image/*">
+            <i class="upload-icon" aria-hidden="true"></i>
+            <strong>拖放图片到这里，或点击选择</strong>
+            <span>也可以直接粘贴剪贴板中的图片</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Adjust -->
+      <section class="card" aria-labelledby="adjust-title">
+        <div class="card-titlebar">
+          <div><h2 id="adjust-title">画面调整</h2><p>拖动画布可平移位置</p></div>
+        </div>
+        <div class="card-body">
+          <div class="field">
+            <span class="field-label">图片方向 <span class="hint" id="rotation-status">横向默认</span></span>
+            <div class="rotation" role="group" aria-label="旋转图片">
+              <button id="rotate-left" type="button" disabled aria-label="向左旋转 90 度">↶ 左转 90°</button>
+              <button id="rotate-right" type="button" disabled aria-label="向右旋转 90 度">↷ 右转 90°</button>
+            </div>
+          </div>
+          <div class="control-row">
+            <div class="field">
+              <label class="field-label" for="fit-select">画面适配</label>
+              <select id="fit-select">
+                <option value="contain" selected>完整显示</option>
+                <option value="cover">铺满并裁切</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="processing-select">处理模式</label>
+              <select id="processing-select">
+                <option value="auto">自动选择</option>
+                <option value="threshold">清晰边缘</option>
+                <option value="floyd-steinberg">照片抖动</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="zoom-slider">缩放 <span class="hint" id="zoom-val">100%</span></label>
+            <input id="zoom-slider" type="range" min="50" max="300" value="100" step="5" aria-label="缩放比例">
+          </div>
+          <div class="control-row">
+            <div class="field">
+              <label class="field-label" for="pos-x">水平位置 <span class="hint" id="pos-x-val">0</span></label>
+              <input id="pos-x" type="range" min="-100" max="100" value="0" aria-label="水平偏移">
+            </div>
+            <div class="field">
+              <label class="field-label" for="pos-y">垂直位置 <span class="hint" id="pos-y-val">0</span></label>
+              <input id="pos-y" type="range" min="-100" max="100" value="0" aria-label="垂直偏移">
+            </div>
+          </div>
+          <p class="hint" id="processing-hint">自动判断图片类型：文字与 Logo 保持边缘，照片才使用抖动。</p>
+        </div>
+      </section>
+
+      <!-- Export -->
+      <section class="card" aria-labelledby="export-title">
+        <div class="card-titlebar">
+          <div><h2 id="export-title">导出</h2><p>500×244 RGB PNG · ≤ 300 KiB</p></div>
+        </div>
+        <div class="card-body">
+          <div class="meta-grid">
+            <div class="field">
+              <label class="field-label" for="slug-input">文件名 slug <span class="hint">用于保存和下载</span></label>
+              <input id="slug-input" class="slug-input" type="text" placeholder="my-gallery-image" maxlength="60" pattern="[a-z0-9](?:[a-z0-9-]*[a-z0-9])?">
+            </div>
+            <div class="field">
+              <label class="field-label" for="title-input">标题 <span class="hint">公开展示名称</span></label>
+              <input id="title-input" type="text" placeholder="图集标题" maxlength="100">
+            </div>
+            <div class="field">
+              <label class="field-label" for="category-input">分类 <span class="hint">短文本标签</span></label>
+              <input id="category-input" type="text" placeholder="品牌标志" maxlength="50">
+            </div>
+          </div>
+          <div id="validation-msg" class="validation-msg" role="status" aria-live="polite"></div>
+          <div class="export-actions">
+            <button id="download-btn" class="btn-primary" disabled>下载 PNG</button>
+            <button id="save-dir-btn" class="btn-teal" disabled>选择图集目录</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <span>HINK 2.13″ · Gallery Maker · 图片仅在浏览器内处理</span>
+    <span><a href="index.html">控制工作室</a> · <a href="firmware.html">固件下载</a></span>
+  </footer>
+</main>
+
+<script src="image-processing.js?v=adaptive-3"></script>
+<script src="gallery-maker-core.js?v=1"></script>
+<script src="gallery-maker.js?v=1"></script>
+</body>
+</html>

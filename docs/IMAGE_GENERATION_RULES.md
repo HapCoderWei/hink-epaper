@@ -55,7 +55,9 @@ calm-mind.png
 python3 scripts/build-gallery.py
 ```
 
-脚本会检查尺寸比例、文件大小、文件名和图片总数，并重新生成 `site/assets/gallery/manifest.json`。新图片还需要在 `scripts/build-gallery.py` 的标题映射表中登记标题和分类。
+脚本会检查尺寸比例、文件大小、文件名和图片总数，并重新生成 `site/assets/gallery/manifest.json`。新图片还需要在 `site/assets/gallery/catalog.json` 中登记标题和分类。
+
+也可以使用 [图集制作器](../site/gallery-maker.html)（`site/gallery-maker.html`）在浏览器中完成图片处理和保存：上传图片 → 调整构图 → 预览三色效果 → 选择本地图集目录保存。制作器会自动更新 `catalog.json` 和 `manifest.json`。
 
 ## 5. 推荐生成流程
 
