@@ -9,9 +9,25 @@
       "title": "Force Logo · 红色版",
       "category": "标语"
     },
+    "lightning-mcqueen-closeup": {
+      "title": "闪电麦昆 · 近景版",
+      "category": "经典角色"
+    },
+    "lightning-mcqueen-standard": {
+      "title": "闪电麦昆 · 标准版",
+      "category": "经典角色"
+    },
     "pepsi-logo": {
       "title": "Pepsi · 红色版",
       "category": "品牌标志"
+    },
+    "spider-man-red": {
+      "title": "蜘蛛侠 · 红色背景",
+      "category": "经典角色"
+    },
+    "spider-man-white": {
+      "title": "蜘蛛侠 · 白色背景",
+      "category": "经典角色"
     }
   }
 }

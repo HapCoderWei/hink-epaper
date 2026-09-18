@@ -14,10 +14,34 @@
       "category": "标语"
     },
     {
+      "id": "lightning-mcqueen-closeup",
+      "file": "lightning-mcqueen-closeup.png",
+      "title": "闪电麦昆 · 近景版",
+      "category": "经典角色"
+    },
+    {
+      "id": "lightning-mcqueen-standard",
+      "file": "lightning-mcqueen-standard.png",
+      "title": "闪电麦昆 · 标准版",
+      "category": "经典角色"
+    },
+    {
       "id": "pepsi-logo",
       "file": "pepsi-logo.png",
       "title": "Pepsi · 红色版",
       "category": "品牌标志"
+    },
+    {
+      "id": "spider-man-red",
+      "file": "spider-man-red.png",
+      "title": "蜘蛛侠 · 红色背景",
+      "category": "经典角色"
+    },
+    {
+      "id": "spider-man-white",
+      "file": "spider-man-white.png",
+      "title": "蜘蛛侠 · 白色背景",
+      "category": "经典角色"
     }
   ]
 }
