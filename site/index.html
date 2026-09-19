@@ -147,14 +147,17 @@
     .device-shell {
       position: relative;
       width: min(540px, 94%);
-      padding: 20px 20px 28px;
-      border: 1px solid #cfd4d2;
-      border-radius: 18px;
-      background: #e8ebe8;
-      box-shadow: 0 28px 60px rgba(0,0,0,.38), inset 0 1px rgba(255,255,255,.9);
     }
-    .device-shell::before { content: "HINK · E0213"; display: block; margin-bottom: 10px; color: #687276; font: 700 9px/1 Menlo, monospace; letter-spacing: .1em; }
-    .device-shell::after { content: ""; position: absolute; left: 50%; bottom: 10px; width: 34px; height: 3px; transform: translateX(-50%); border-radius: 999px; background: #b2b9b7; }
+    .device-photo { display: block; width: 100%; height: auto; filter: drop-shadow(0 24px 46px rgba(0,0,0,.42)); }
+    .device-shell canvas {
+      position: absolute;
+      left: 15.84%;
+      top: 15.9%;
+      width: 73.31%;
+      height: 70.52%;
+      border: 0;
+      box-shadow: none;
+    }
     canvas {
       display: block;
       width: 100%;
@@ -311,8 +314,6 @@
       h1 { font-size: 34px; }
       .workflow-note { display: none; }
       .device-stage { min-height: 260px; padding: 24px 18px; }
-      .device-shell { width: min(540px, 94%); padding: 13px 13px 21px; border-radius: 13px; }
-      .device-shell::before { margin-bottom: 7px; font-size: 7px; }
       .preview-caption { padding: 13px 16px 15px; }
       .card, details.ota, .preview-panel { border-radius: 17px; }
       .card-titlebar, .step, .tools-body, details.ota summary { padding-left: 17px; padding-right: 17px; }
@@ -429,7 +430,10 @@
           </span>
         </div>
         <div class="device-stage">
-          <div class="device-shell"><canvas id="preview" width="250" height="122" aria-label="价签向右旋转 90 度后的横向画面预览"></canvas></div>
+          <div class="device-shell">
+            <img class="device-photo" src="assets/tag-frame.webp" alt="HINK 电子价签真机" width="1200" height="609">
+            <canvas id="preview" width="250" height="122" aria-label="价签向右旋转 90 度后的横向画面预览"></canvas>
+          </div>
         </div>
         <div class="preview-caption">
           <div>
