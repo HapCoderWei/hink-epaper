@@ -8,7 +8,7 @@ TLSR8359F512ET32 价签固件：支持 HINK-E0213A162-FPC-A0，以及实验支�
 
 [固件分享页](https://hapcoderwei.github.io/hink-epaper/firmware.html)是对外统一入口，目前只提供经过完整验收的 **HINK E-Paper Community v1.0.0**（设备内部版本 v19），不展示开发中间镜像。页面包含适配设备实物照片、P6 引脚大图、TLSR 烧录器接线、首次烧录步骤、固件校验值、后续 OTA 更新方法和内置图集。
 
-- **首次接管原厂价签：**使用 TLSRPGM 烧录器，通过 SWire 从 `0x000000` 写入固件。网页不负责首次烧录；动手者按分享页接线，并自行使用兼容烧录工具完成备份、写入和读回校验。
+- **首次接管原厂价签：**使用 TLSRPGM 烧录器，通过 SWire 从 `0x000000` 写入固件。网页不负责首次烧录。第一次调试一种新硬件或需要保留原厂固件时先备份；已经确认的同型号价签可直接覆盖烧录，不再每块都做整片备份，但仍保留写后同长度读回校验。
 - **刷入 HINK 固件以后：**使用 [网页传图与 OTA 工具](https://hapcoderwei.github.io/hink-epaper/)连接附近价签，完成蓝牙传图或后续 OTA 更新，正常使用无需连接烧录器。
 - **没有合适图片时：**固件页的「内置图集」提供提前适配好价签分辨率的成品图，点开任意一张直接进入传图工具预载该图，连接价签即可发送；收录方式见 [内置图集技术方案](docs/GALLERY.md)。
 - **想自己做图时：**使用 [图集制作器](https://hapcoderwei.github.io/hink-epaper/gallery-maker.html) 上传图片、调整构图、预览三色效果，导出 `500×244` 成品 PNG。
@@ -51,6 +51,7 @@ TLSR8359F512ET32 价签固件：支持 HINK-E0213A162-FPC-A0，以及实验支�
 - [B1 里程碑与待办](docs/MILESTONE_B1.md)
 - [硬件映射、屏幕协议与移植](docs/HARDWARE.md)
 - [FPC-A002 / SSD1680 三色屏移植与真机记录](docs/HARDWARE_GDEY0213Z98.md)
+- [FPC-A002 价签 SWire 快速烧录手册](docs/SWIRE_FLASHING.md)
 - [编译、测试与烧录](docs/BUILD.md)
 - [固件分享页与 GitHub Release 发布流程](docs/FIRMWARE_RELEASES.md)
 - [内置图集技术方案](docs/GALLERY.md)
@@ -74,7 +75,7 @@ TLSR8359F512ET32 价签固件：支持 HINK-E0213A162-FPC-A0，以及实验支�
 
 ## 使用风险
 
-仅针对文档中已确认的硬件映射，不保证其他 TLSR8359 价签兼容。烧录会覆盖已有程序，应先备份自己的设备。项目不含任何设备 Flash 备份、工厂固件、个人日志或密钥。
+仅针对文档中已确认的硬件映射，不保证其他 TLSR8359 价签兼容。烧录会覆盖已有程序；首次调试新硬件、需要逆向或设备存在重要数据时应先备份。已经确认的同型号普通价签可按快速手册直接覆盖。项目不含任何设备 Flash 备份、工厂固件、个人日志或密钥。
 
 > **OTA 版本区别：**已发布的 B1 和 `v0.1.1-name` 固件继承了不安全的旧 ATC OTA，禁止使用 ATC 页面的 `Send Firmware` / `final flash`。只有已经通过 SWire 写入本项目 OTA v2 M2 固件的价签，才能使用当前网页的 OTA v2 功能。详见 [OTA 状态与风险](docs/OTA_STATUS.md)。
 
